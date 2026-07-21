@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>The Reading Log</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📚</text></svg>" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" />
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; }
+</style>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef } = React;
+
+const STORAGE_KEY = "reading-tracker-data-v1";
+
+const SHELVES = [
+  { id: "reading", label: "Currently Reading" },
+  { id: "read", label: "Read" },
+  { id: "toRead", label: "To Be Read" },
+];
+
+const GOODREADS_SHELF_MAP = { "read": "read", "currently-reading": "reading", "to-read": "toRead" };
+
+function goodreadsRowToBook(row) {
+  const rawShelf = (row["Exclusive Shelf"] || "").trim().toLowerCase();
+  const shelf = GOODREADS_SHELF_MAP[rawShelf] || "toRead";
+  const totalPages = parseInt(row["Number of Pages"], 10) || 0;
+  const rating = parseInt(row["My Rating"], 10) || 0;
+  const ownedCopies = parseInt(row["Owned Copies"], 10) || 0;
+  const dateAdded = (row["Date Added"] || "").trim() || todayStr();
+  const dateFinished = (row["Date Read"] || "").trim() || null;
+  return {
+    id: uid(),
+    title: (row["Title"] || "Untitled").trim(),
+    author: (row["Author"] || "").trim(),
+    shelf,
+    owned: ownedCopies > 0,
+    totalPages,
+    currentPage: shelf === "read" ? totalPages : 0,
+    rating,
+    dateAdded,
+    dateStarted: shelf === "reading" ? dateAdded : null,
+    dateFinished: shelf === "read" ? dateFinished : null,
+    log: [],
+  };
+}
+
+// Bundled local catalog for offline autocomplete (title, author, typical page count).
+const BOOK_LIBRARY = [
+  ["To Kill a Mockingbird","Harper Lee",336],["1984","George Orwell",328],["Animal Farm","George Orwell",112],
+  ["Pride and Prejudice","Jane Austen",432],["The Great Gatsby","F. Scott Fitzgerald",180],["Moby-Dick","Herman Melville",720],
+  ["War and Peace","Leo Tolstoy",1225],["Crime and Punishment","Fyodor Dostoevsky",671],["The Brothers Karamazov","Fyodor Dostoevsky",824],
+  ["Anna Karenina","Leo Tolstoy",864],["Jane Eyre","Charlotte Brontë",507],["Wuthering Heights","Emily Brontë",416],
+  ["The Catcher in the Rye","J.D. Salinger",277],["Lord of the Flies","William Golding",224],["Brave New World","Aldous Huxley",311],
+  ["Fahrenheit 451","Ray Bradbury",256],["The Hobbit","J.R.R. Tolkien",310],["The Fellowship of the Ring","J.R.R. Tolkien",423],
+  ["The Two Towers","J.R.R. Tolkien",352],["The Return of the King","J.R.R. Tolkien",416],["The Silmarillion","J.R.R. Tolkien",365],
+  ["Harry Potter and the Sorcerer's Stone","J.K. Rowling",309],["Harry Potter and the Chamber of Secrets","J.K. Rowling",341],
+  ["Harry Potter and the Prisoner of Azkaban","J.K. Rowling",435],["Harry Potter and the Goblet of Fire","J.K. Rowling",636],
+  ["Harry Potter and the Order of the Phoenix","J.K. Rowling",766],["Harry Potter and the Half-Blood Prince","J.K. Rowling",607],
+  ["Harry Potter and the Deathly Hallows","J.K. Rowling",607],["A Game of Thrones","George R.R. Martin",694],
+  ["A Clash of Kings","George R.R. Martin",761],["A Storm of Swords","George R.R. Martin",973],["A Feast for Crows","George R.R. Martin",753],
+  ["A Dance with Dragons","George R.R. Martin",1056],["The Name of the Wind","Patrick Rothfuss",662],
+  ["The Wise Man's Fear","Patrick Rothfuss",994],["Mistborn: The Final Empire","Brandon Sanderson",541],
+  ["The Way of Kings","Brandon Sanderson",1007],["Dune","Frank Herbert",412],["Dune Messiah","Frank Herbert",256],
+  ["Foundation","Isaac Asimov",255],["I, Robot","Isaac Asimov",253],["Ender's Game","Orson Scott Card",324],
+  ["The Martian","Andy Weir",369],["Project Hail Mary","Andy Weir",496],
+  ["Slaughterhouse-Five","Kurt Vonnegut",275],["The Handmaid's Tale","Margaret Atwood",311],
+  ["Never Let Me Go","Kazuo Ishiguro",288],["The Remains of the Day","Kazuo Ishiguro",258],
+  ["Beloved","Toni Morrison",324],["The Color Purple","Alice Walker",295],["One Hundred Years of Solitude","Gabriel García Márquez",417],
+  ["Love in the Time of Cholera","Gabriel García Márquez",348],["The Alchemist","Paulo Coelho",208],
+  ["Life of Pi","Yann Martel",319],["The Kite Runner","Khaled Hosseini",371],["A Thousand Splendid Suns","Khaled Hosseini",367],
+  ["The Book Thief","Markus Zusak",552],["All the Light We Cannot See","Anthony Doerr",530],
+  ["The Night Circus","Erin Morgenstern",387],["Circe","Madeline Miller",393],["The Song of Achilles","Madeline Miller",416],
+  ["Where the Crawdads Sing","Delia Owens",384],["The Silent Patient","Alex Michaelides",336],
+  ["Gone Girl","Gillian Flynn",419],["Sharp Objects","Gillian Flynn",254],["The Girl on the Train","Paula Hawkins",336],
+  ["The Girl with the Dragon Tattoo","Stieg Larsson",465],["Big Little Lies","Liane Moriarty",460],
+  ["Educated","Tara Westover",334],["Becoming","Michelle Obama",448],["Untamed","Glennon Doyle",352],
+  ["Atomic Habits","James Clear",320],["The Power of Habit","Charles Duhigg",371],["Deep Work","Cal Newport",304],
+  ["Thinking, Fast and Slow","Daniel Kahneman",499],["Sapiens","Yuval Noah Harari",443],["Homo Deus","Yuval Noah Harari",448],
+  ["21 Lessons for the 21st Century","Yuval Noah Harari",372],["Outliers","Malcolm Gladwell",309],
+  ["Blink","Malcolm Gladwell",296],["The Tipping Point","Malcolm Gladwell",301],["David and Goliath","Malcolm Gladwell",305],
+  ["Man's Search for Meaning","Viktor Frankl",165],["The Subtle Art of Not Giving a F*ck","Mark Manson",224],
+  ["Rich Dad Poor Dad","Robert Kiyosaki",336],["The Lean Startup","Eric Ries",336],["Zero to One","Peter Thiel",224],
+  ["Good to Great","Jim Collins",320],["The 7 Habits of Highly Effective People","Stephen Covey",381],
+  ["How to Win Friends and Influence People","Dale Carnegie",291],["Start With Why","Simon Sinek",256],
+  ["Grit","Angela Duckworth",352],["Mindset","Carol Dweck",320],["Quiet","Susan Cain",333],
+  ["The Body Keeps the Score","Bessel van der Kolk",464],["Braiding Sweetgrass","Robin Wall Kimmerer",408],
+  ["The Immortal Life of Henrietta Lacks","Rebecca Skloot",381],["A Brief History of Time","Stephen Hawking",212],
+  ["Cosmos","Carl Sagan",384],["The Selfish Gene","Richard Dawkins",360],["Guns, Germs, and Steel","Jared Diamond",480],
+  ["The Wright Brothers","David McCullough",336],["Team of Rivals","Doris Kearns Goodwin",944],
+  ["Into the Wild","Jon Krakauer",224],["Into Thin Air","Jon Krakauer",368],["The Diary of a Young Girl","Anne Frank",283],
+  ["Night","Elie Wiesel",120],["The Glass Castle","Jeannette Walls",288],["Wild","Cheryl Strayed",336],
+  ["Eat, Pray, Love","Elizabeth Gilbert",352],["The Road","Cormac McCarthy",287],["No Country for Old Men","Cormac McCarthy",309],
+  ["Blood Meridian","Cormac McCarthy",351],["East of Eden","John Steinbeck",601],["Of Mice and Men","John Steinbeck",112],
+  ["The Grapes of Wrath","John Steinbeck",464],["A Farewell to Arms","Ernest Hemingway",332],
+  ["The Old Man and the Sea","Ernest Hemingway",127],["For Whom the Bell Tolls","Ernest Hemingway",480],
+  ["One Flew Over the Cuckoo's Nest","Ken Kesey",325],["The Bell Jar","Sylvia Plath",244],
+  ["Catch-22","Joseph Heller",453],["Invisible Man","Ralph Ellison",581],
+  ["The Sun Also Rises","Ernest Hemingway",251],["Frankenstein","Mary Shelley",280],["Dracula","Bram Stoker",418],
+  ["The Picture of Dorian Gray","Oscar Wilde",254],["Great Expectations","Charles Dickens",544],
+  ["A Tale of Two Cities","Charles Dickens",489],["Oliver Twist","Charles Dickens",608],["David Copperfield","Charles Dickens",882],
+  ["Little Women","Louisa May Alcott",449],["Anne of Green Gables","L.M. Montgomery",320],
+  ["The Secret Garden","Frances Hodgson Burnett",331],["Charlotte's Web","E.B. White",192],
+  ["The Chronicles of Narnia: The Lion, the Witch and the Wardrobe","C.S. Lewis",206],
+  ["Percy Jackson & the Olympians: The Lightning Thief","Rick Riordan",377],
+  ["The Hunger Games","Suzanne Collins",374],["Catching Fire","Suzanne Collins",391],["Mockingjay","Suzanne Collins",390],
+  ["Divergent","Veronica Roth",487],["The Maze Runner","James Dashner",375],["The Fault in Our Stars","John Green",313],
+  ["Looking for Alaska","John Green",221],["Eleanor & Park","Rainbow Rowell",325],["The Perks of Being a Wallflower","Stephen Chbosky",213],
+  ["Twilight","Stephenie Meyer",498],["New Moon","Stephenie Meyer",563],["Eclipse","Stephenie Meyer",629],
+  ["Breaking Dawn","Stephenie Meyer",756],["It","Stephen King",1138],["The Shining","Stephen King",447],
+  ["Carrie","Stephen King",199],["Misery","Stephen King",320],["The Stand","Stephen King",1153],
+  ["Doctor Sleep","Stephen King",531],["11/22/63","Stephen King",849],["Pet Sematary","Stephen King",374],
+  ["The Silence of the Lambs","Thomas Harris",352],["Gone with the Wind","Margaret Mitchell",1037],
+  ["Rebecca","Daphne du Maurier",416],["And Then There Were None","Agatha Christie",264],
+  ["Murder on the Orient Express","Agatha Christie",256],["The Murder of Roger Ackroyd","Agatha Christie",312],
+  ["Sherlock Holmes: A Study in Scarlet","Arthur Conan Doyle",154],["The Hound of the Baskervilles","Arthur Conan Doyle",256],
+  ["The Da Vinci Code","Dan Brown",489],["Angels & Demons","Dan Brown",616],["Inferno","Dan Brown",624],
+  ["The Girl Who Played with Fire","Stieg Larsson",503],["Ready Player One","Ernest Cline",374],
+  ["The Martian Chronicles","Ray Bradbury",222],["Neuromancer","William Gibson",271],["Snow Crash","Neal Stephenson",480],
+  ["The Left Hand of Darkness","Ursula K. Le Guin",304],["A Wizard of Earthsea","Ursula K. Le Guin",183],
+  ["American Gods","Neil Gaiman",541],["Good Omens","Neil Gaiman",412],
+  ["Coraline","Neil Gaiman",162],["The Ocean at the End of the Lane","Neil Gaiman",181],
+  ["Norse Mythology","Neil Gaiman",304],["The Graveyard Book","Neil Gaiman",312],
+  ["Six of Crows","Leigh Bardugo",465],["Shadow and Bone","Leigh Bardugo",358],["Throne of Glass","Sarah J. Maas",406],
+  ["A Court of Thorns and Roses","Sarah J. Maas",432],["Crescent City: House of Earth and Blood","Sarah J. Maas",803],
+  ["The Cruel Prince","Holly Black",384],["Caraval","Stephanie Garber",407],
+  ["Fourth Wing","Rebecca Yarros",512],["Iron Flame","Rebecca Yarros",640],
+  ["Verity","Colleen Hoover",336],["It Ends with Us","Colleen Hoover",384],["Ugly Love","Colleen Hoover",323],
+  ["The Notebook","Nicholas Sparks",214],["A Walk to Remember","Nicholas Sparks",240],["Me Before You","Jojo Moyes",369],
+  ["Normal People","Sally Rooney",273],["Conversations with Friends","Sally Rooney",321],
+  ["Little Fires Everywhere","Celeste Ng",338],["Everything I Never Told You","Celeste Ng",297],
+  ["The Vanishing Half","Brit Bennett",343],["Homegoing","Yaa Gyasi",305],["The Nightingale","Kristin Hannah",440],
+  ["The Four Winds","Kristin Hannah",464],["Lessons in Chemistry","Bonnie Garmus",400],
+  ["Tomorrow, and Tomorrow, and Tomorrow","Gabrielle Zevin",416],["Demon Copperhead","Barbara Kingsolver",560],
+  ["The Covenant of Water","Abraham Verghese",736],["Hamnet","Maggie O'Farrell",305],
+  ["The Midnight Library","Matt Haig",304],["How to Stop Time","Matt Haig",336],
+  ["Klara and the Sun","Kazuo Ishiguro",303],["The Overstory","Richard Powers",502],
+  ["A Little Life","Hanya Yanagihara",720],["The Goldfinch","Donna Tartt",784],["The Secret History","Donna Tartt",559],
+  ["Where the Wild Things Are","Maurice Sendak",48],["Green Eggs and Ham","Dr. Seuss",62],
+  ["The Very Hungry Caterpillar","Eric Carle",26],["Matilda","Roald Dahl",240],["Charlie and the Chocolate Factory","Roald Dahl",192],
+  ["James and the Giant Peach","Roald Dahl",176],["The BFG","Roald Dahl",208],["Fantastic Mr Fox","Roald Dahl",96],
+  ["The Wonderful Wizard of Oz","L. Frank Baum",259],["Alice's Adventures in Wonderland","Lewis Carroll",200],
+  ["The Little Prince","Antoine de Saint-Exupéry",96],["Siddhartha","Hermann Hesse",152],
+  ["The Stranger","Albert Camus",123],["The Plague","Albert Camus",308],["No Longer Human","Osamu Dazai",176],
+  ["Norwegian Wood","Haruki Murakami",389],["Kafka on the Shore","Haruki Murakami",467],
+  ["1Q84","Haruki Murakami",1318],["The Wind-Up Bird Chronicle","Haruki Murakami",607],
+  ["Convenience Store Woman","Sayaka Murata",176],["Before the Coffee Gets Cold","Toshikazu Kawaguchi",213],
+  ["The Housemaid","Freida McFadden",336],
+  ["Thinking in Systems","Donella Meadows",240],["The Innovator's Dilemma","Clayton Christensen",286],
+  ["Freakonomics","Steven Levitt",320],["The Signal and the Noise","Nate Silver",544],
+  ["Endurance","Alfred Lansing",416],["Unbroken","Laura Hillenbrand",528],["Seabiscuit","Laura Hillenbrand",399],
+  ["Salt, Fat, Acid, Heat","Samin Nosrat",480],
+  ["On Writing","Stephen King",320],["Bird by Bird","Anne Lamott",237],["Big Magic","Elizabeth Gilbert",288],
+  ["The Artist's Way","Julia Cameron",270],["Steal Like an Artist","Austin Kleon",160],
+  ["Meditations","Marcus Aurelius",254],["The Republic","Plato",416],["Beyond Good and Evil","Friedrich Nietzsche",240],
+  ["Thus Spoke Zarathustra","Friedrich Nietzsche",352],["The Prince","Niccolò Machiavelli",132],
+  ["Walden","Henry David Thoreau",352],["On the Origin of Species","Charles Darwin",502],
+  ["A People's History of the United States","Howard Zinn",729],["The Wealth of Nations","Adam Smith",1152],
+  ["Capital in the Twenty-First Century","Thomas Piketty",696],
+  ["The Emperor of All Maladies","Siddhartha Mukherjee",571],["When Breath Becomes Air","Paul Kalanithi",228],
+  ["Between the World and Me","Ta-Nehisi Coates",176],["How to Be an Antiracist","Ibram X. Kendi",320],
+  ["The New Jim Crow","Michelle Alexander",312],["Just Mercy","Bryan Stevenson",336],
+  ["Born a Crime","Trevor Noah",304],["Yes Please","Amy Poehler",329],["Bossypants","Tina Fey",288],
+  ["Is Everyone Hanging Out Without Me?","Mindy Kaling",244],["Furiously Happy","Jenny Lawson",329],
+  ["A Promised Land","Barack Obama",768],["Spare","Prince Harry",416],["Open","Andre Agassi",386],
+];
+
+function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function yearOf(dateStr) { return dateStr ? Number(dateStr.slice(0, 4)) : null; }
+function daysInMonth(year, monthIdx) { return new Date(year, monthIdx + 1, 0).getDate(); }
+function firstWeekday(year, monthIdx) { return new Date(year, monthIdx, 1).getDay(); }
+const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+// ---- Minimal inline icon set (no external icon library needed) ----
+const Icon = ({ path, size = 16, ...props }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    {path}
+  </svg>
+);
+const PlusIcon = (p) => <Icon {...p} path={<><path d="M12 5v14M5 12h14" /></>} />;
+const XIcon = (p) => <Icon {...p} path={<><path d="M18 6L6 18M6 6l12 12" /></>} />;
+const StarIcon = ({ filled, ...p }) => <Icon {...p} path={<path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z" fill={filled ? "currentColor" : "none"} />} />;
+const ChevronLeftIcon = (p) => <Icon {...p} path={<path d="M15 18l-6-6 6-6" />} />;
+const ChevronRightIcon = (p) => <Icon {...p} path={<path d="M9 18l6-6-6-6" />} />;
+const CheckIcon = (p) => <Icon {...p} path={<path d="M20 6L9 17l-5-5" />} />;
+const BookOpenIcon = (p) => <Icon {...p} path={<><path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z" /><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z" /></>} />;
+const TrashIcon = (p) => <Icon {...p} path={<><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0l-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6" /></>} />;
+const UploadIcon = (p) => <Icon {...p} path={<><path d="M12 16V4M6 10l6-6 6 6" /><path d="M4 20h16" /></>} />;
+const DownloadIcon = (p) => <Icon {...p} path={<><path d="M12 4v12M6 12l6 6 6-6" /><path d="M4 20h16" /></>} />;
+
+function Stamp({ children, tone = "red" }) {
+  const colors = { red: { border: "#A63A2C", color: "#A63A2C" }, navy: { border: "#1F3B57", color: "#1F3B57" }, gold: { border: "#8C6D1F", color: "#8C6D1F" } };
+  const c = colors[tone];
+  return (
+    <span style={{ fontFamily: "'Special Elite', monospace", fontSize: "10px", letterSpacing: "0.12em", color: c.color, border: `2px solid ${c.border}`, borderRadius: "3px", padding: "2px 7px", display: "inline-block", transform: "rotate(-3deg)", opacity: 0.85, textTransform: "uppercase", whiteSpace: "nowrap" }}>
+      {children}
+    </span>
+  );
+}
+
+function ProgressBar({ current, total, tone = "#1F3B57" }) {
+  const pct = total > 0 ? Math.min(100, Math.round((current / total) * 100)) : 0;
+  return (
+    <div>
+      <div style={{ background: "#E4D9BE", borderRadius: "2px", height: "8px", overflow: "hidden", border: "1px solid #9C8563" }}>
+        <div style={{ width: `${pct}%`, background: tone, height: "100%", transition: "width 0.4s ease" }} />
+      </div>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "11px", color: "#5A5040", marginTop: "4px" }}>
+        {total > 0 ? `${current} / ${total} pages · ${pct}%` : "no page count set"}
+      </div>
+    </div>
+  );
+}
+
+function Stars({ rating, onRate }) {
+  return (
+    <div style={{ display: "flex", gap: "2px" }}>
+      {[1, 2, 3, 4, 5].map((n) => (
+        <span key={n} style={{ cursor: onRate ? "pointer" : "default", color: "#C7A756" }} onClick={() => onRate && onRate(n === rating ? 0 : n)}>
+          <StarIcon size={15} filled={n <= (rating || 0)} />
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function computeDailyPages(log) {
+  const map = {};
+  log.forEach((entry, i) => {
+    const prevPage = i > 0 ? log[i - 1].page : 0;
+    map[entry.date] = (map[entry.date] || 0) + Math.max(0, entry.page - prevPage);
+  });
+  return map;
+}
+
+function aggregateDailyPages(books) {
+  const combined = {};
+  books.forEach((b) => {
+    const perBook = computeDailyPages(b.log);
+    Object.entries(perBook).forEach(([date, pages]) => { combined[date] = (combined[date] || 0) + pages; });
+  });
+  return combined;
+}
+
+function MonthCalendar({ dailyPagesMap, monthDate, setMonthDate }) {
+  const year = monthDate.getFullYear();
+  const monthIdx = monthDate.getMonth();
+  const total = daysInMonth(year, monthIdx);
+  const startWeekday = firstWeekday(year, monthIdx);
+  const logByDate = dailyPagesMap;
+  const cells = [];
+  for (let i = 0; i < startWeekday; i++) cells.push(null);
+  for (let d = 1; d <= total; d++) cells.push(d);
+
+  return (
+    <div style={{ background: "#F2ECDD", border: "1px solid #9C8563", borderRadius: "4px", padding: "10px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+        <button onClick={() => setMonthDate(new Date(year, monthIdx - 1, 1))} style={{ background: "none", border: "none", cursor: "pointer", color: "#1F3B57" }} aria-label="Previous month"><ChevronLeftIcon size={16} /></button>
+        <div style={{ fontFamily: "'Special Elite', monospace", fontSize: "12px", color: "#262220", letterSpacing: "0.05em" }}>{MONTH_NAMES[monthIdx]} {year}</div>
+        <button onClick={() => setMonthDate(new Date(year, monthIdx + 1, 1))} style={{ background: "none", border: "none", cursor: "pointer", color: "#1F3B57" }} aria-label="Next month"><ChevronRightIcon size={16} /></button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "3px", fontFamily: "'IBM Plex Mono', monospace" }}>
+        {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => <div key={i} style={{ fontSize: "9px", textAlign: "center", color: "#8C7A5C" }}>{d}</div>)}
+        {cells.map((d, i) => {
+          if (d === null) return <div key={i} />;
+          const dateStr = `${year}-${String(monthIdx + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+          const pages = logByDate[dateStr];
+          return (
+            <div key={i} title={pages ? `${pages} pages read` : ""} style={{ aspectRatio: "1", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", borderRadius: "2px", border: "1px solid #C9BC9C", background: pages ? "#1F3B57" : "transparent", color: pages ? "#F2ECDD" : "#8C7A5C" }}>
+              {d}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Modal({ title, onClose, children }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(38,34,32,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: "16px" }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: "#FBF8F0", border: "1px solid #9C8563", borderRadius: "6px", padding: "22px", width: "100%", maxWidth: "420px", maxHeight: "88vh", overflowY: "auto", boxShadow: "0 12px 32px rgba(0,0,0,0.25)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <h3 style={{ fontFamily: "'Special Elite', monospace", fontSize: "15px", color: "#262220", margin: 0 }}>{title}</h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#8C7A5C" }}><XIcon size={18} /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+const inputStyle = { width: "100%", padding: "8px 10px", fontFamily: "'Source Serif 4', serif", fontSize: "14px", border: "1px solid #9C8563", borderRadius: "3px", background: "#FBF8F0", color: "#262220", marginBottom: "12px", boxSizing: "border-box" };
+const labelStyle = { fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", color: "#8C7A5C", textTransform: "uppercase", letterSpacing: "0.08em", display: "block", marginBottom: "4px" };
+const btnPrimary = { fontFamily: "'Special Elite', monospace", fontSize: "12px", letterSpacing: "0.05em", textTransform: "uppercase", background: "#1F3B57", color: "#F2ECDD", border: "none", borderRadius: "3px", padding: "9px 16px", cursor: "pointer" };
+const btnGhost = { fontFamily: "'Special Elite', monospace", fontSize: "12px", letterSpacing: "0.05em", textTransform: "uppercase", background: "transparent", color: "#1F3B57", border: "1px solid #1F3B57", borderRadius: "3px", padding: "9px 16px", cursor: "pointer" };
+
+function AddBookModal({ onClose, onSave }) {
+  const [title, setTitle] = useState("");
+  const [author, setAuthor] = useState("");
+  const [shelf, setShelf] = useState("toRead");
+  const [owned, setOwned] = useState(false);
+  const [totalPages, setTotalPages] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suppressNextSearch = useRef(false);
+
+  useEffect(() => {
+    if (suppressNextSearch.current) { suppressNextSearch.current = false; return; }
+    const q = title.trim().toLowerCase();
+    if (q.length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
+    const matches = BOOK_LIBRARY.filter(([t, a]) => t.toLowerCase().includes(q) || a.toLowerCase().includes(q)).slice(0, 6);
+    setSuggestions(matches);
+    setShowSuggestions(matches.length > 0);
+  }, [title]);
+
+  function pickSuggestion([t, a, pages]) {
+    suppressNextSearch.current = true;
+    setTitle(t); setAuthor(a); setTotalPages(String(pages));
+    setShowSuggestions(false); setSuggestions([]);
+  }
+
+  return (
+    <Modal title="New Card" onClose={onClose}>
+      <label style={labelStyle}>Title</label>
+      <div style={{ position: "relative", marginBottom: showSuggestions && suggestions.length ? "0" : "12px" }}>
+        <input style={{ ...inputStyle, marginBottom: 0 }} value={title} onChange={(e) => setTitle(e.target.value)} onFocus={() => { if (suggestions.length) setShowSuggestions(true); }} placeholder="Start typing a book title…" autoComplete="off" />
+        {showSuggestions && suggestions.length > 0 && (
+          <div style={{ border: "1px solid #9C8563", borderTop: "none", borderRadius: "0 0 3px 3px", background: "#FBF8F0", maxHeight: "180px", overflowY: "auto", marginBottom: "12px" }}>
+            {suggestions.map(([t, a, pages], i) => (
+              <div key={i} onClick={() => pickSuggestion([t, a, pages])} style={{ padding: "7px 10px", cursor: "pointer", fontSize: "13px", color: "#262220", borderBottom: i < suggestions.length - 1 ? "1px solid #E4D9BE" : "none" }} onMouseDown={(e) => e.preventDefault()}>
+                <div style={{ fontFamily: "'Source Serif 4', serif", fontWeight: 600 }}>{t}</div>
+                <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", color: "#8C7A5C" }}>{a} · {pages}p</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <label style={labelStyle}>Author</label>
+      <input style={inputStyle} value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Author name" />
+      <label style={labelStyle}>Shelf</label>
+      <select style={inputStyle} value={shelf} onChange={(e) => setShelf(e.target.value)}>
+        {SHELVES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+      </select>
+      <label style={labelStyle}>Total pages</label>
+      <input style={inputStyle} type="number" min="0" value={totalPages} onChange={(e) => setTotalPages(e.target.value)} placeholder="e.g. 320" />
+      <label style={{ ...labelStyle, display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
+        <input type="checkbox" checked={owned} onChange={(e) => setOwned(e.target.checked)} /> I own a copy of this book
+      </label>
+      <div style={{ display: "flex", gap: "8px", marginTop: "14px", justifyContent: "flex-end" }}>
+        <button style={btnGhost} onClick={onClose}>Cancel</button>
+        <button style={btnPrimary} onClick={() => {
+          if (!title.trim()) return;
+          onSave({ id: uid(), title: title.trim(), author: author.trim(), shelf, owned, totalPages: totalPages ? Number(totalPages) : 0, currentPage: 0, rating: 0, dateAdded: todayStr(), dateStarted: shelf === "reading" ? todayStr() : null, dateFinished: shelf === "read" ? todayStr() : null, log: [] });
+          onClose();
+        }}>Add to shelf</button>
+      </div>
+    </Modal>
+  );
+}
+
+function LogReadingModal({ book, onClose, onSave }) {
+  const [date, setDate] = useState(todayStr());
+  const [page, setPage] = useState(book.currentPage || "");
+  return (
+    <Modal title={`Log Reading — ${book.title}`} onClose={onClose}>
+      <label style={labelStyle}>Date</label>
+      <input style={inputStyle} type="date" value={date} onChange={(e) => setDate(e.target.value)} max={todayStr()} />
+      <label style={labelStyle}>Page you reached</label>
+      <input style={inputStyle} type="number" min="0" max={book.totalPages || undefined} value={page} onChange={(e) => setPage(e.target.value)} placeholder="e.g. 145" />
+      <div style={{ display: "flex", gap: "8px", marginTop: "14px", justifyContent: "flex-end" }}>
+        <button style={btnGhost} onClick={onClose}>Cancel</button>
+        <button style={btnPrimary} onClick={() => {
+          const p = Number(page);
+          if (!page || isNaN(p)) return;
+          onSave(date, p); onClose();
+        }}>Save entry</button>
+      </div>
+    </Modal>
+  );
+}
+
+function BookCard({ book, onUpdate, onDelete, onLog }) {
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [monthDate, setMonthDate] = useState(new Date());
+  const [showLog, setShowLog] = useState(false);
+
+  return (
+    <div style={{ background: "#FBF8F0", border: "1px solid #9C8563", borderRadius: "4px", padding: "14px", boxShadow: "2px 2px 0 rgba(156,133,99,0.25)", display: "flex", flexDirection: "column", gap: "8px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+        <div>
+          <div style={{ fontFamily: "'Source Serif 4', serif", fontWeight: 600, fontSize: "15px", color: "#262220" }}>{book.title}</div>
+          <div style={{ fontFamily: "'Source Serif 4', serif", fontSize: "12px", color: "#5A5040", fontStyle: "italic" }}>{book.author || "Unknown author"}</div>
+        </div>
+        <button onClick={() => onDelete(book.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#B8A88A" }} aria-label="Remove"><TrashIcon size={14} /></button>
+      </div>
+
+      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+        <Stamp tone={book.owned ? "red" : "navy"}>{book.owned ? "Owned" : "Wishlist"}</Stamp>
+        {book.shelf === "read" && book.dateFinished && <Stamp tone="gold">Finished {book.dateFinished}</Stamp>}
+      </div>
+
+      {book.shelf === "reading" && (
+        <>
+          <ProgressBar current={book.currentPage} total={book.totalPages} />
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <button style={btnGhost} onClick={() => setShowLog(true)}>Log today's reading</button>
+            <button style={btnGhost} onClick={() => setShowCalendar((v) => !v)}>{showCalendar ? "Hide" : "Show"} calendar</button>
+            <button style={btnPrimary} onClick={() => onUpdate({ ...book, shelf: "read", dateFinished: todayStr(), currentPage: book.totalPages || book.currentPage })}>Mark finished</button>
+          </div>
+          {showCalendar && <MonthCalendar dailyPagesMap={computeDailyPages(book.log)} monthDate={monthDate} setMonthDate={setMonthDate} />}
+        </>
+      )}
+
+      {book.shelf === "read" && (
+        <div>
+          <div style={{ ...labelStyle, marginBottom: "6px" }}>Your rating</div>
+          <Stars rating={book.rating} onRate={(r) => onUpdate({ ...book, rating: r })} />
+        </div>
+      )}
+
+      {book.shelf === "toRead" && (
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <button style={{ ...labelStyle, cursor: "pointer", border: "1px solid #9C8563", borderRadius: "3px", padding: "6px 10px", background: "#F2ECDD" }} onClick={() => onUpdate({ ...book, owned: !book.owned })}>{book.owned ? "Mark not owned" : "Mark owned"}</button>
+          <button style={btnPrimary} onClick={() => onUpdate({ ...book, shelf: "reading", dateStarted: todayStr() })}>Start reading</button>
+        </div>
+      )}
+
+      {showLog && <LogReadingModal book={book} onClose={() => setShowLog(false)} onSave={(date, page) => onLog(book.id, date, page)} />}
+    </div>
+  );
+}
+
+function App() {
+  const [books, setBooks] = useState([]);
+  const [goals, setGoals] = useState({});
+  const [loaded, setLoaded] = useState(false);
+  const [activeShelf, setActiveShelf] = useState("reading");
+  const [showAdd, setShowAdd] = useState(false);
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalInput, setGoalInput] = useState("");
+  const [activityMonth, setActivityMonth] = useState(new Date());
+  const [importMessage, setImportMessage] = useState(null);
+  const currentYear = new Date().getFullYear();
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setBooks(parsed.books || []);
+        setGoals(parsed.goals || {});
+      }
+    } catch (e) { /* no existing data yet */ }
+    setLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ books, goals }));
+    } catch (e) { console.error("Failed to save", e); }
+  }, [books, goals, loaded]);
+
+  function addBook(book) { setBooks((prev) => [...prev, book]); }
+  function updateBook(updated) { setBooks((prev) => prev.map((b) => (b.id === updated.id ? updated : b))); }
+  function deleteBook(id) { setBooks((prev) => prev.filter((b) => b.id !== id)); }
+  function logReading(id, date, page) {
+    setBooks((prev) => prev.map((b) => {
+      if (b.id !== id) return b;
+      const log = [...b.log.filter((e) => e.date !== date), { date, page }].sort((a, c) => a.date.localeCompare(c.date));
+      return { ...b, log, currentPage: page };
+    }));
+  }
+
+  function handleImportFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    Papa.parse(file, {
+      header: true, skipEmptyLines: true,
+      complete: (results) => {
+        const existingKeys = new Set(books.map((b) => `${b.title.toLowerCase()}|${b.author.toLowerCase()}`));
+        const imported = [];
+        results.data.forEach((row) => {
+          if (!row["Title"]) return;
+          const book = goodreadsRowToBook(row);
+          const key = `${book.title.toLowerCase()}|${book.author.toLowerCase()}`;
+          if (existingKeys.has(key)) return;
+          existingKeys.add(key); imported.push(book);
+        });
+        setBooks((prev) => [...prev, ...imported]);
+        setImportMessage(`Imported ${imported.length} book${imported.length === 1 ? "" : "s"} from Goodreads.`);
+        setTimeout(() => setImportMessage(null), 5000);
+      },
+      error: () => {
+        setImportMessage("Couldn't read that file — make sure it's the Goodreads export CSV.");
+        setTimeout(() => setImportMessage(null), 5000);
+      },
+    });
+    e.target.value = "";
+  }
+
+  function handleExportData() {
+    const blob = new Blob([JSON.stringify({ books, goals }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `reading-log-backup-${todayStr()}.json`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function handleImportBackup(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const parsed = JSON.parse(evt.target.result);
+        setBooks(parsed.books || []);
+        setGoals(parsed.goals || {});
+        setImportMessage("Backup restored successfully.");
+      } catch (err) {
+        setImportMessage("Couldn't read that backup file.");
+      }
+      setTimeout(() => setImportMessage(null), 5000);
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
+
+  const goalTarget = goals[currentYear] || 0;
+  const booksReadThisYear = books.filter((b) => b.shelf === "read" && yearOf(b.dateFinished) === currentYear).length;
+  const shelfCounts = SHELVES.reduce((acc, s) => { acc[s.id] = books.filter((b) => b.shelf === s.id).length; return acc; }, {});
+  const visibleBooks = books.filter((b) => b.shelf === activeShelf);
+
+  const aggregatedDailyPages = aggregateDailyPages(books);
+  const activityYear = activityMonth.getFullYear();
+  const activityMonthIdx = activityMonth.getMonth();
+  const monthPrefix = `${activityYear}-${String(activityMonthIdx + 1).padStart(2, "0")}`;
+  const monthEntries = Object.entries(aggregatedDailyPages).filter(([date]) => date.startsWith(monthPrefix));
+  const daysReadThisMonth = monthEntries.length;
+  const pagesReadThisMonth = monthEntries.reduce((sum, [, pages]) => sum + pages, 0);
+  const avgPagesPerActiveDay = daysReadThisMonth > 0 ? Math.round(pagesReadThisMonth / daysReadThisMonth) : 0;
+
+  const goodreadsInputRef = useRef(null);
+  const backupInputRef = useRef(null);
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#EDE6D6", fontFamily: "'Source Serif 4', serif", padding: "24px 16px 60px", boxSizing: "border-box" }}>
+      <div style={{ maxWidth: "760px", margin: "0 auto" }}>
+        <header style={{ textAlign: "center", marginBottom: "24px" }}>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.2em", color: "#8C7A5C", textTransform: "uppercase" }}>Personal Catalog</div>
+          <h1 style={{ fontFamily: "'Special Elite', monospace", fontSize: "clamp(24px, 5vw, 32px)", color: "#262220", margin: "6px 0" }}>The Reading Log</h1>
+        </header>
+
+        <div style={{ display: "flex", gap: "6px", marginBottom: "18px", flexWrap: "wrap" }}>
+          {SHELVES.map((s) => (
+            <button key={s.id} onClick={() => setActiveShelf(s.id)} style={{ fontFamily: "'Special Elite', monospace", fontSize: "11px", letterSpacing: "0.05em", textTransform: "uppercase", padding: "9px 14px", borderRadius: "3px 3px 0 0", cursor: "pointer", border: "1px solid #9C8563", borderBottom: activeShelf === s.id ? "1px solid #F2ECDD" : "1px solid #9C8563", background: activeShelf === s.id ? "#F2ECDD" : "#DCD0B4", color: "#262220", position: "relative", top: "1px" }}>
+              {s.label} ({shelfCounts[s.id] || 0})
+            </button>
+          ))}
+        </div>
+
+        {visibleBooks.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "40px 20px", color: "#8C7A5C", border: "1px dashed #9C8563", borderRadius: "4px", marginBottom: "22px" }}>
+            <BookOpenIcon size={22} style={{ marginBottom: "8px" }} />
+            <div style={{ fontSize: "13px" }}>No cards in this drawer yet. Add a book to get started.</div>
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "14px", marginBottom: "22px" }}>
+            {visibleBooks.map((b) => <BookCard key={b.id} book={b} onUpdate={updateBook} onDelete={deleteBook} onLog={logReading} />)}
+          </div>
+        )}
+
+        <section style={{ background: "#FBF8F0", border: "1px solid #9C8563", borderRadius: "4px", padding: "16px 18px", marginBottom: "22px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
+          <div>
+            <div style={labelStyle}>{currentYear} Reading Goal</div>
+            {goalTarget > 0 ? (
+              <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "13px", color: "#262220" }}>{booksReadThisYear} of {goalTarget} books · {Math.min(100, Math.round((booksReadThisYear / goalTarget) * 100))}%</div>
+            ) : (
+              <div style={{ fontSize: "13px", color: "#8C7A5C" }}>No goal set yet</div>
+            )}
+          </div>
+          {goalTarget > 0 && (
+            <div style={{ flex: "1 1 160px", maxWidth: "220px" }}><ProgressBar current={booksReadThisYear} total={goalTarget} tone="#A63A2C" /></div>
+          )}
+          <button style={btnGhost} onClick={() => { setGoalInput(String(goalTarget || "")); setEditingGoal(true); }}>{goalTarget > 0 ? "Edit goal" : "Set goal"}</button>
+        </section>
+
+        <section style={{ background: "#FBF8F0", border: "1px solid #9C8563", borderRadius: "4px", padding: "16px 18px", marginBottom: "22px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "10px", flexWrap: "wrap", gap: "8px" }}>
+            <div style={labelStyle}>Monthly Reading Activity</div>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "12px", color: "#262220" }}>
+              {daysReadThisMonth} day{daysReadThisMonth === 1 ? "" : "s"} read · {pagesReadThisMonth} pages{daysReadThisMonth > 0 ? ` · avg ${avgPagesPerActiveDay}/day` : ""}
+            </div>
+          </div>
+          <MonthCalendar dailyPagesMap={aggregatedDailyPages} monthDate={activityMonth} setMonthDate={setActivityMonth} />
+        </section>
+
+        <button onClick={() => setShowAdd(true)} style={{ position: "fixed", bottom: "22px", right: "22px", background: "#1F3B57", color: "#F2ECDD", border: "none", borderRadius: "50%", width: "52px", height: "52px", cursor: "pointer", boxShadow: "0 4px 14px rgba(0,0,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center" }} aria-label="Add book">
+          <PlusIcon size={22} />
+        </button>
+
+        <footer style={{ textAlign: "center", marginTop: "36px", paddingTop: "18px", borderTop: "1px dashed #9C8563", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "center" }}>
+            <button onClick={() => goodreadsInputRef.current && goodreadsInputRef.current.click()} style={{ ...btnGhost, display: "inline-flex", alignItems: "center", gap: "6px" }}>
+              <UploadIcon size={13} /> Import from Goodreads CSV
+            </button>
+            <button onClick={handleExportData} style={{ ...btnGhost, display: "inline-flex", alignItems: "center", gap: "6px" }}>
+              <DownloadIcon size={13} /> Export backup
+            </button>
+            <button onClick={() => backupInputRef.current && backupInputRef.current.click()} style={{ ...btnGhost, display: "inline-flex", alignItems: "center", gap: "6px" }}>
+              <UploadIcon size={13} /> Restore backup
+            </button>
+          </div>
+          <input ref={goodreadsInputRef} type="file" accept=".csv" onChange={handleImportFile} style={{ display: "none" }} />
+          <input ref={backupInputRef} type="file" accept=".json" onChange={handleImportBackup} style={{ display: "none" }} />
+          {importMessage && <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "11px", color: "#1F3B57" }}>{importMessage}</div>}
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", color: "#B8A88A" }}>Your data is stored only on this device's browser.</div>
+        </footer>
+      </div>
+
+      {showAdd && <AddBookModal onClose={() => setShowAdd(false)} onSave={addBook} />}
+
+      {editingGoal && (
+        <Modal title={`Set ${currentYear} Goal`} onClose={() => setEditingGoal(false)}>
+          <label style={labelStyle}>Number of books</label>
+          <input style={inputStyle} type="number" min="0" value={goalInput} onChange={(e) => setGoalInput(e.target.value)} placeholder="e.g. 24" />
+          <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+            <button style={btnGhost} onClick={() => setEditingGoal(false)}>Cancel</button>
+            <button style={btnPrimary} onClick={() => { setGoals((prev) => ({ ...prev, [currentYear]: Number(goalInput) || 0 })); setEditingGoal(false); }}>
+              <CheckIcon size={13} style={{ marginRight: "4px", verticalAlign: "middle" }} /> Save
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
