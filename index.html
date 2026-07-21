@@ -236,6 +236,7 @@ const ChevronRightIcon = (p) => <Icon {...p} path={<path d="M9 18l6-6-6-6" />} /
 const CheckIcon = (p) => <Icon {...p} path={<path d="M20 6L9 17l-5-5" />} />;
 const BookOpenIcon = (p) => <Icon {...p} path={<><path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z" /><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z" /></>} />;
 const TrashIcon = (p) => <Icon {...p} path={<><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0l-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6" /></>} />;
+const PencilIcon = (p) => <Icon {...p} path={<><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z" /></>} />;
 const UploadIcon = (p) => <Icon {...p} path={<><path d="M12 16V4M6 10l6-6 6 6" /><path d="M4 20h16" /></>} />;
 const DownloadIcon = (p) => <Icon {...p} path={<><path d="M12 4v12M6 12l6 6 6-6" /><path d="M4 20h16" /></>} />;
 const CloudIcon = (p) => <Icon {...p} path={<path d="M17.5 19H9a7 7 0 1 1 6.71-9h.79a4.5 4.5 0 1 1 0 9z" />} />;
@@ -433,10 +434,87 @@ function LogReadingModal({ book, onClose, onSave }) {
   );
 }
 
-function BookCard({ book, onUpdate, onDelete, onLog }) {
+function EditBookModal({ book, onClose, onSave }) {
+  const [title, setTitle] = useState(book.title);
+  const [author, setAuthor] = useState(book.author);
+  const [totalPages, setTotalPages] = useState(String(book.totalPages || ""));
+  const [owned, setOwned] = useState(book.owned);
+
+  return (
+    <Modal title="Edit Card" onClose={onClose}>
+      <label style={labelStyle}>Title</label>
+      <input style={inputStyle} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Book title" />
+      <label style={labelStyle}>Author</label>
+      <input style={inputStyle} value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Author name" />
+      <label style={labelStyle}>Total pages</label>
+      <input style={inputStyle} type="number" min="0" value={totalPages} onChange={(e) => setTotalPages(e.target.value)} placeholder="e.g. 320" />
+      <label style={{ ...labelStyle, display: "flex", alignItems: "center", gap: "6px", cursor: "pointer" }}>
+        <input type="checkbox" checked={owned} onChange={(e) => setOwned(e.target.checked)} /> I own a copy of this book
+      </label>
+      <div style={{ display: "flex", gap: "8px", marginTop: "14px", justifyContent: "flex-end" }}>
+        <button style={btnGhost} onClick={onClose}>Cancel</button>
+        <button style={btnPrimary} onClick={() => {
+          if (!title.trim()) return;
+          onSave({ ...book, title: title.trim(), author: author.trim(), totalPages: totalPages ? Number(totalPages) : 0 });
+          onClose();
+        }}>Save changes</button>
+      </div>
+    </Modal>
+  );
+}
+
+function EditLogModal({ book, onClose, onSave }) {
+  const [entries, setEntries] = useState(() => book.log.slice().sort((a, c) => c.date.localeCompare(a.date)));
+  const [newDate, setNewDate] = useState(todayStr());
+  const [newPage, setNewPage] = useState("");
+
+  function updateEntry(idx, field, value) {
+    setEntries((prev) => prev.map((e, i) => (i === idx ? { ...e, [field]: value } : e)));
+  }
+  function deleteEntry(idx) {
+    setEntries((prev) => prev.filter((_, i) => i !== idx));
+  }
+  function addEntry() {
+    const p = Number(newPage);
+    if (!newPage || isNaN(p) || !newDate) return;
+    setEntries((prev) => [{ date: newDate, page: p }, ...prev.filter((e) => e.date !== newDate)]);
+    setNewPage("");
+  }
+
+  return (
+    <Modal title={`Edit Reading History — ${book.title}`} onClose={onClose}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px", maxHeight: "260px", overflowY: "auto", marginBottom: "14px" }}>
+        {entries.length === 0 && <div style={{ fontSize: "12px", color: "#8C7A5C" }}>No entries logged yet.</div>}
+        {entries.map((entry, i) => (
+          <div key={i} style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+            <input type="date" value={entry.date} max={todayStr()} onChange={(e) => updateEntry(i, "date", e.target.value)} style={{ ...inputStyle, marginBottom: 0, flex: "1.2" }} />
+            <input type="number" min="0" value={entry.page} onChange={(e) => updateEntry(i, "page", Number(e.target.value))} style={{ ...inputStyle, marginBottom: 0, flex: "0.8" }} placeholder="page" />
+            <button onClick={() => deleteEntry(i)} style={{ background: "none", border: "none", cursor: "pointer", color: "#B8A88A", flexShrink: 0 }} aria-label="Delete entry"><TrashIcon size={14} /></button>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ ...labelStyle, marginBottom: "6px" }}>Add an entry</div>
+      <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "14px" }}>
+        <input type="date" value={newDate} max={todayStr()} onChange={(e) => setNewDate(e.target.value)} style={{ ...inputStyle, marginBottom: 0, flex: "1.2" }} />
+        <input type="number" min="0" value={newPage} onChange={(e) => setNewPage(e.target.value)} style={{ ...inputStyle, marginBottom: 0, flex: "0.8" }} placeholder="page" />
+        <button onClick={addEntry} style={{ ...btnGhost, flexShrink: 0, padding: "8px 10px" }} aria-label="Add entry"><PlusIcon size={14} /></button>
+      </div>
+
+      <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+        <button style={btnGhost} onClick={onClose}>Cancel</button>
+        <button style={btnPrimary} onClick={() => { onSave(entries); onClose(); }}>Save history</button>
+      </div>
+    </Modal>
+  );
+}
+
+function BookCard({ book, onUpdate, onDelete, onLog, onEditLog }) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [monthDate, setMonthDate] = useState(new Date());
   const [showLog, setShowLog] = useState(false);
+  const [showEditBook, setShowEditBook] = useState(false);
+  const [showEditLog, setShowEditLog] = useState(false);
 
   return (
     <div style={{ background: "#FBF8F0", border: "1px solid #9C8563", borderRadius: "4px", padding: "14px", boxShadow: "2px 2px 0 rgba(156,133,99,0.25)", display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -445,7 +523,10 @@ function BookCard({ book, onUpdate, onDelete, onLog }) {
           <div style={{ fontFamily: "'Source Serif 4', serif", fontWeight: 600, fontSize: "15px", color: "#262220" }}>{book.title}</div>
           <div style={{ fontFamily: "'Source Serif 4', serif", fontSize: "12px", color: "#5A5040", fontStyle: "italic" }}>{book.author || "Unknown author"}</div>
         </div>
-        <button onClick={() => onDelete(book.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#B8A88A" }} aria-label="Remove"><TrashIcon size={14} /></button>
+        <div style={{ display: "flex", gap: "10px", flexShrink: 0 }}>
+          <button onClick={() => setShowEditBook(true)} style={{ background: "none", border: "none", cursor: "pointer", color: "#8C7A5C" }} aria-label="Edit book"><PencilIcon size={14} /></button>
+          <button onClick={() => onDelete(book.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "#B8A88A" }} aria-label="Remove"><TrashIcon size={14} /></button>
+        </div>
       </div>
 
       <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
@@ -461,7 +542,12 @@ function BookCard({ book, onUpdate, onDelete, onLog }) {
             <button style={btnGhost} onClick={() => setShowCalendar((v) => !v)}>{showCalendar ? "Hide" : "Show"} calendar</button>
             <button style={btnPrimary} onClick={() => onUpdate({ ...book, shelf: "read", dateFinished: todayStr(), currentPage: book.totalPages || book.currentPage })}>Mark finished</button>
           </div>
-          {showCalendar && <MonthCalendar dailyPagesMap={computeDailyPages(book.log)} monthDate={monthDate} setMonthDate={setMonthDate} />}
+          {showCalendar && (
+            <>
+              <MonthCalendar dailyPagesMap={computeDailyPages(book.log)} monthDate={monthDate} setMonthDate={setMonthDate} />
+              <button style={{ ...btnGhost, alignSelf: "flex-start" }} onClick={() => setShowEditLog(true)}>Edit reading history</button>
+            </>
+          )}
         </>
       )}
 
@@ -469,6 +555,9 @@ function BookCard({ book, onUpdate, onDelete, onLog }) {
         <div>
           <div style={{ ...labelStyle, marginBottom: "6px" }}>Your rating</div>
           <Stars rating={book.rating} onRate={(r) => onUpdate({ ...book, rating: r })} />
+          {book.log.length > 0 && (
+            <button style={{ ...btnGhost, marginTop: "8px" }} onClick={() => setShowEditLog(true)}>Edit reading history</button>
+          )}
         </div>
       )}
 
@@ -480,6 +569,8 @@ function BookCard({ book, onUpdate, onDelete, onLog }) {
       )}
 
       {showLog && <LogReadingModal book={book} onClose={() => setShowLog(false)} onSave={(date, page) => onLog(book.id, date, page)} />}
+      {showEditBook && <EditBookModal book={book} onClose={() => setShowEditBook(false)} onSave={onUpdate} />}
+      {showEditLog && <EditLogModal book={book} onClose={() => setShowEditLog(false)} onSave={(entries) => onEditLog(book.id, entries)} />}
     </div>
   );
 }
@@ -664,6 +755,14 @@ function App() {
       return { ...b, log, currentPage: page };
     }));
   }
+  function editLog(id, entries) {
+    setBooks((prev) => prev.map((b) => {
+      if (b.id !== id) return b;
+      const log = entries.slice().sort((a, c) => a.date.localeCompare(c.date));
+      const currentPage = log.length > 0 ? log[log.length - 1].page : b.currentPage;
+      return { ...b, log, currentPage };
+    }));
+  }
 
   function handleImportFile(e) {
     const file = e.target.files[0];
@@ -776,7 +875,7 @@ function App() {
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "14px", marginBottom: "22px" }}>
-            {visibleBooks.map((b) => <BookCard key={b.id} book={b} onUpdate={updateBook} onDelete={deleteBook} onLog={logReading} />)}
+            {visibleBooks.map((b) => <BookCard key={b.id} book={b} onUpdate={updateBook} onDelete={deleteBook} onLog={logReading} onEditLog={editLog} />)}
           </div>
         )}
 
