@@ -18,7 +18,7 @@
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel" data-presets="react">
+<script type="text/babel-source" id="app-source">
 const { useState, useEffect, useRef } = React;
 
 const STORAGE_KEY = "reading-tracker-data-v1";
@@ -651,6 +651,13 @@ function App() {
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(<App />);
+</script>
+<script>
+  var src = document.getElementById("app-source").textContent;
+  var output = Babel.transform(src, { presets: [["react", { runtime: "classic" }]] }).code;
+  var s = document.createElement("script");
+  s.text = output;
+  document.body.appendChild(s);
 </script>
 </body>
 </html>
