@@ -434,7 +434,12 @@
       "dateAdded": "2025/05/03",
       "dateStarted": null,
       "dateFinished": "2026/07/06",
-      "log": []
+      "log": [
+        {
+          "date": "2026-07-06",
+          "page": 360
+        }
+      ]
     },
     {
       "id": "zybak39umrucq8c2",
