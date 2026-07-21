@@ -467,7 +467,12 @@
       "dateAdded": "2025/05/06",
       "dateStarted": null,
       "dateFinished": "2025/05/20",
-      "log": []
+      "log": [
+        {
+          "date": "2025-05-20",
+          "page": 220
+        }
+      ]
     },
     {
       "id": "3i9ccd2lmrucq8c2",
