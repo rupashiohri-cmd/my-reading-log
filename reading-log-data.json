@@ -481,12 +481,17 @@
       "shelf": "read",
       "owned": true,
       "totalPages": 433,
-      "currentPage": 433,
+      "currentPage": 560,
       "rating": 5,
       "dateAdded": "2025/05/04",
       "dateStarted": null,
       "dateFinished": "2025/09/16",
-      "log": []
+      "log": [
+        {
+          "date": "2025-09-16",
+          "page": 560
+        }
+      ]
     },
     {
       "id": "y6s8rph9mrucq8c2",
