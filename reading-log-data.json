@@ -401,7 +401,12 @@
       "dateAdded": "2025/05/03",
       "dateStarted": null,
       "dateFinished": "2026/05/10",
-      "log": []
+      "log": [
+        {
+          "date": "2026-05-10",
+          "page": 620
+        }
+      ]
     },
     {
       "id": "0wqq4u2bmrucq8c2",
