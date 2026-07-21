@@ -566,7 +566,12 @@
       "dateAdded": "2025/08/25",
       "dateStarted": null,
       "dateFinished": "2025/10/14",
-      "log": []
+      "log": [
+        {
+          "date": "2025-10-14",
+          "page": 323
+        }
+      ]
     },
     {
       "id": "sywt35bjmrucq8c2",
