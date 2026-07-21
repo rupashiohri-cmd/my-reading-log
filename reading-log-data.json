@@ -542,7 +542,12 @@
       "dateAdded": "2025/08/07",
       "dateStarted": null,
       "dateFinished": "2025/08/26",
-      "log": []
+      "log": [
+        {
+          "date": "2025-08-26",
+          "page": 317
+        }
+      ]
     },
     {
       "id": "8gtg8y7zmrucq8c2",
