@@ -481,7 +481,7 @@
       "shelf": "read",
       "owned": true,
       "totalPages": 433,
-      "currentPage": 560,
+      "currentPage": 433,
       "rating": 5,
       "dateAdded": "2025/05/04",
       "dateStarted": null,
@@ -489,7 +489,7 @@
       "log": [
         {
           "date": "2025-09-16",
-          "page": 560
+          "page": 433
         }
       ]
     },
