@@ -750,7 +750,8 @@ function App() {
     setBooks((prev) => prev.map((b) => {
       if (b.id !== id) return b;
       const log = [...b.log.filter((e) => e.date !== date), { date, page }].sort((a, c) => a.date.localeCompare(c.date));
-      return { ...b, log, currentPage: page };
+      const currentPage = log[log.length - 1].page;
+      return { ...b, log, currentPage };
     }));
   }
   function editLog(id, entries) {
