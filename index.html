@@ -22,6 +22,46 @@
 const { useState, useEffect, useRef } = React;
 
 const STORAGE_KEY = "reading-tracker-data-v1";
+const GH_CONFIG_KEY = "reading-tracker-gh-config";
+const GH_DATA_PATH = "reading-log-data.json";
+
+function utf8ToBase64(str) {
+  return btoa(unescape(encodeURIComponent(str)));
+}
+function base64ToUtf8(str) {
+  return decodeURIComponent(escape(atob(str)));
+}
+
+async function ghGetFile(cfg) {
+  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${GH_DATA_PATH}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `token ${cfg.token}`, Accept: "application/vnd.github+json" },
+  });
+  if (res.status === 404) return { data: null, sha: null };
+  if (!res.ok) throw new Error(`GitHub read failed (${res.status})`);
+  const json = await res.json();
+  const data = JSON.parse(base64ToUtf8(json.content));
+  return { data, sha: json.sha };
+}
+
+async function ghPutFile(cfg, dataObj, sha) {
+  const url = `https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${GH_DATA_PATH}`;
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: { Authorization: `token ${cfg.token}`, Accept: "application/vnd.github+json" },
+    body: JSON.stringify({
+      message: `Update reading log — ${new Date().toISOString()}`,
+      content: utf8ToBase64(JSON.stringify(dataObj, null, 2)),
+      sha: sha || undefined,
+    }),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`GitHub write failed (${res.status}): ${errText}`);
+  }
+  const json = await res.json();
+  return json.content.sha;
+}
 
 const SHELVES = [
   { id: "reading", label: "Currently Reading" },
@@ -198,6 +238,8 @@ const BookOpenIcon = (p) => <Icon {...p} path={<><path d="M2 4h6a4 4 0 0 1 4 4v1
 const TrashIcon = (p) => <Icon {...p} path={<><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0l-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6" /></>} />;
 const UploadIcon = (p) => <Icon {...p} path={<><path d="M12 16V4M6 10l6-6 6 6" /><path d="M4 20h16" /></>} />;
 const DownloadIcon = (p) => <Icon {...p} path={<><path d="M12 4v12M6 12l6 6 6-6" /><path d="M4 20h16" /></>} />;
+const CloudIcon = (p) => <Icon {...p} path={<path d="M17.5 19H9a7 7 0 1 1 6.71-9h.79a4.5 4.5 0 1 1 0 9z" />} />;
+const SettingsIcon = (p) => <Icon {...p} path={<><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></>} />;
 
 function Stamp({ children, tone = "red" }) {
   const colors = { red: { border: "#A63A2C", color: "#A63A2C" }, navy: { border: "#1F3B57", color: "#1F3B57" }, gold: { border: "#8C6D1F", color: "#8C6D1F" } };
@@ -442,6 +484,59 @@ function BookCard({ book, onUpdate, onDelete, onLog }) {
   );
 }
 
+function SettingsModal({ ghConfig, syncStatus, syncError, onClose, onSave, onDisconnect, onRefresh }) {
+  const [owner, setOwner] = useState(ghConfig?.owner || "");
+  const [repo, setRepo] = useState(ghConfig?.repo || "");
+  const [token, setToken] = useState(ghConfig?.token || "");
+
+  return (
+    <Modal title="Sync Across Devices" onClose={onClose}>
+      {ghConfig ? (
+        <>
+          <div style={{ fontSize: "13px", color: "#262220", marginBottom: "10px" }}>
+            Connected to <strong>{ghConfig.owner}/{ghConfig.repo}</strong>.
+          </div>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "11px", color: syncStatus === "error" ? "#A63A2C" : "#5A5040", marginBottom: "14px" }}>
+            Status: {syncStatus}{syncError ? ` — ${syncError}` : ""}
+          </div>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <button style={btnGhost} onClick={onRefresh}>Refresh from cloud</button>
+            <button style={{ ...btnGhost, borderColor: "#A63A2C", color: "#A63A2C" }} onClick={onDisconnect}>Disconnect</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={{ fontSize: "13px", color: "#5A5040", marginBottom: "14px", lineHeight: 1.5 }}>
+            Enter the same details on every device to keep your library in sync via your GitHub repo.
+          </div>
+          <label style={labelStyle}>GitHub username</label>
+          <input style={inputStyle} value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="e.g. rupashiohri-cmd" autoComplete="off" />
+          <label style={labelStyle}>Repository name</label>
+          <input style={inputStyle} value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="e.g. my-reading-log" autoComplete="off" />
+          <label style={labelStyle}>Personal access token</label>
+          <input style={inputStyle} type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="ghp_..." autoComplete="off" />
+          <div style={{ fontSize: "11px", color: "#8C7A5C", marginBottom: "14px", lineHeight: 1.5 }}>
+            Create one at github.com → Settings → Developer settings → Personal access tokens → Fine-grained tokens. Give it Read and Write access to "Contents" for just this repository.
+          </div>
+          <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+            <button style={btnGhost} onClick={onClose}>Cancel</button>
+            <button
+              style={btnPrimary}
+              onClick={() => {
+                if (!owner.trim() || !repo.trim() || !token.trim()) return;
+                onSave({ owner: owner.trim(), repo: repo.trim(), token: token.trim() });
+                onClose();
+              }}
+            >
+              Connect
+            </button>
+          </div>
+        </>
+      )}
+    </Modal>
+  );
+}
+
 function App() {
   const [books, setBooks] = useState([]);
   const [goals, setGoals] = useState({});
@@ -452,8 +547,16 @@ function App() {
   const [goalInput, setGoalInput] = useState("");
   const [activityMonth, setActivityMonth] = useState(new Date());
   const [importMessage, setImportMessage] = useState(null);
+  const [ghConfig, setGhConfig] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [syncStatus, setSyncStatus] = useState("disconnected"); // disconnected | syncing | synced | error
+  const [syncError, setSyncError] = useState("");
   const currentYear = new Date().getFullYear();
+  const shaRef = useRef(null);
+  const pushTimerRef = useRef(null);
+  const skipNextPushRef = useRef(false);
 
+  // Load local cache + GitHub config on first mount
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -463,15 +566,93 @@ function App() {
         setGoals(parsed.goals || {});
       }
     } catch (e) { /* no existing data yet */ }
+    try {
+      const rawCfg = window.localStorage.getItem(GH_CONFIG_KEY);
+      if (rawCfg) setGhConfig(JSON.parse(rawCfg));
+    } catch (e) { /* no config yet */ }
     setLoaded(true);
   }, []);
 
+  // Always keep a local cache as a fallback
   useEffect(() => {
     if (!loaded) return;
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ books, goals }));
-    } catch (e) { console.error("Failed to save", e); }
+    } catch (e) { console.error("Failed to save locally", e); }
   }, [books, goals, loaded]);
+
+  // Initial pull from GitHub once config is available
+  useEffect(() => {
+    if (!loaded || !ghConfig) return;
+    let cancelled = false;
+    setSyncStatus("syncing");
+    setSyncError("");
+    ghGetFile(ghConfig)
+      .then(({ data, sha }) => {
+        if (cancelled) return;
+        if (data) {
+          skipNextPushRef.current = true;
+          setBooks(data.books || []);
+          setGoals(data.goals || {});
+          shaRef.current = sha;
+          setSyncStatus("synced");
+        } else {
+          // No remote file yet — create it from whatever is local right now
+          return ghPutFile(ghConfig, { books, goals }, null).then((newSha) => {
+            shaRef.current = newSha;
+            setSyncStatus("synced");
+          });
+        }
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        setSyncStatus("error");
+        setSyncError(e.message);
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line
+  }, [loaded, ghConfig]);
+
+  // Push to GitHub whenever data changes (debounced), skipping the pull-triggered update
+  useEffect(() => {
+    if (!loaded || !ghConfig) return;
+    if (skipNextPushRef.current) { skipNextPushRef.current = false; return; }
+    clearTimeout(pushTimerRef.current);
+    pushTimerRef.current = setTimeout(() => {
+      setSyncStatus("syncing");
+      ghPutFile(ghConfig, { books, goals }, shaRef.current)
+        .then((newSha) => { shaRef.current = newSha; setSyncStatus("synced"); setSyncError(""); })
+        .catch((e) => { setSyncStatus("error"); setSyncError(e.message); });
+    }, 1200);
+    return () => clearTimeout(pushTimerRef.current);
+    // eslint-disable-next-line
+  }, [books, goals]);
+
+  function saveGhConfig(cfg) {
+    window.localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(cfg));
+    setGhConfig(cfg);
+  }
+  function disconnectGh() {
+    window.localStorage.removeItem(GH_CONFIG_KEY);
+    setGhConfig(null);
+    shaRef.current = null;
+    setSyncStatus("disconnected");
+  }
+  function manualRefresh() {
+    if (!ghConfig) return;
+    setSyncStatus("syncing");
+    ghGetFile(ghConfig)
+      .then(({ data, sha }) => {
+        if (data) {
+          skipNextPushRef.current = true;
+          setBooks(data.books || []);
+          setGoals(data.goals || {});
+          shaRef.current = sha;
+        }
+        setSyncStatus("synced");
+      })
+      .catch((e) => { setSyncStatus("error"); setSyncError(e.message); });
+  }
 
   function addBook(book) { setBooks((prev) => [...prev, book]); }
   function updateBook(updated) { setBooks((prev) => prev.map((b) => (b.id === updated.id ? updated : b))); }
@@ -559,9 +740,25 @@ function App() {
   return (
     <div style={{ minHeight: "100vh", background: "#EDE6D6", fontFamily: "'Source Serif 4', serif", padding: "24px 16px 60px", boxSizing: "border-box" }}>
       <div style={{ maxWidth: "760px", margin: "0 auto" }}>
-        <header style={{ textAlign: "center", marginBottom: "24px" }}>
+        <header style={{ textAlign: "center", marginBottom: "24px", position: "relative" }}>
+          <button
+            onClick={() => setShowSettings(true)}
+            style={{ position: "absolute", right: 0, top: 0, background: "none", border: "none", cursor: "pointer", color: "#8C7A5C", display: "flex", alignItems: "center", gap: "4px" }}
+            aria-label="Sync settings"
+          >
+            <SettingsIcon size={18} />
+          </button>
           <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.2em", color: "#8C7A5C", textTransform: "uppercase" }}>Personal Catalog</div>
           <h1 style={{ fontFamily: "'Special Elite', monospace", fontSize: "clamp(24px, 5vw, 32px)", color: "#262220", margin: "6px 0" }}>The Reading Log</h1>
+          {ghConfig && (
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "5px", fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", color: syncStatus === "error" ? "#A63A2C" : "#8C7A5C" }}>
+              <CloudIcon size={11} />
+              {syncStatus === "syncing" && "Syncing…"}
+              {syncStatus === "synced" && "Synced to GitHub"}
+              {syncStatus === "error" && "Sync error — tap gear icon"}
+              {syncStatus === "disconnected" && "Not connected"}
+            </div>
+          )}
         </header>
 
         <div style={{ display: "flex", gap: "6px", marginBottom: "18px", flexWrap: "wrap" }}>
@@ -627,7 +824,9 @@ function App() {
           <input ref={goodreadsInputRef} type="file" accept=".csv" onChange={handleImportFile} style={{ display: "none" }} />
           <input ref={backupInputRef} type="file" accept=".json" onChange={handleImportBackup} style={{ display: "none" }} />
           {importMessage && <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "11px", color: "#1F3B57" }}>{importMessage}</div>}
-          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", color: "#B8A88A" }}>Your data is stored only on this device's browser.</div>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "9px", color: "#B8A88A" }}>
+            {ghConfig ? "Synced across devices via GitHub." : "Data stored on this device only — connect GitHub sync in settings (gear icon, top right) to sync across devices."}
+          </div>
         </footer>
       </div>
 
@@ -644,6 +843,18 @@ function App() {
             </button>
           </div>
         </Modal>
+      )}
+
+      {showSettings && (
+        <SettingsModal
+          ghConfig={ghConfig}
+          syncStatus={syncStatus}
+          syncError={syncError}
+          onClose={() => setShowSettings(false)}
+          onSave={saveGhConfig}
+          onDisconnect={disconnectGh}
+          onRefresh={manualRefresh}
+        />
       )}
     </div>
   );
