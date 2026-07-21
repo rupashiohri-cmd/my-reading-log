@@ -223,7 +223,12 @@
       "dateAdded": "2024/06/05",
       "dateStarted": null,
       "dateFinished": "2024/04/25",
-      "log": []
+      "log": [
+        {
+          "date": "2024-04-21",
+          "page": 209
+        }
+      ]
     },
     {
       "id": "19aa495zmrucq8c2",
