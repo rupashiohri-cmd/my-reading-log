@@ -368,7 +368,12 @@
       "dateAdded": "2025/03/23",
       "dateStarted": null,
       "dateFinished": "2025/05/02",
-      "log": []
+      "log": [
+        {
+          "date": "2025-05-02",
+          "page": 800
+        }
+      ]
     },
     {
       "id": "tzvn2xshmrucq8c2",
