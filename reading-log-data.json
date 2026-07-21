@@ -68,7 +68,12 @@
       "dateAdded": "2024/06/05",
       "dateStarted": null,
       "dateFinished": "2024/03/31",
-      "log": []
+      "log": [
+        {
+          "date": "2025-03-31",
+          "page": 734
+        }
+      ]
     },
     {
       "id": "i3lnbmphmrucq8c2",
