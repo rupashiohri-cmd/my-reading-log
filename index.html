@@ -551,13 +551,11 @@ function BookCard({ book, onUpdate, onDelete, onLog, onEditLog }) {
         </>
       )}
 
-      {book.shelf === "read" && (
+          {book.shelf === "read" && (
         <div>
           <div style={{ ...labelStyle, marginBottom: "6px" }}>Your rating</div>
           <Stars rating={book.rating} onRate={(r) => onUpdate({ ...book, rating: r })} />
-          {book.log.length > 0 && (
-            <button style={{ ...btnGhost, marginTop: "8px" }} onClick={() => setShowEditLog(true)}>Edit reading history</button>
-          )}
+          <button style={{ ...btnGhost, marginTop: "8px" }} onClick={() => setShowEditLog(true)}>Edit reading history</button>
         </div>
       )}
 
