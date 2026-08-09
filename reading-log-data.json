@@ -936,6 +936,20 @@
       "dateStarted": null,
       "dateFinished": null,
       "log": []
+    },
+    {
+      "id": "pm0uul7smslnbn2i",
+      "title": "Plain Truth",
+      "author": "Jodi Picoult",
+      "shelf": "toRead",
+      "owned": true,
+      "totalPages": 469,
+      "currentPage": 0,
+      "rating": 0,
+      "dateAdded": "2026-08-09",
+      "dateStarted": null,
+      "dateFinished": null,
+      "log": []
     }
   ],
   "goals": {
