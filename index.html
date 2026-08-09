@@ -653,6 +653,7 @@ function App() {
   const [goals, setGoals] = useState({});
   const [loaded, setLoaded] = useState(false);
   const [activeShelf, setActiveShelf] = useState("reading");
+  const [ownedFilter, setOwnedFilter] = useState("all");
   const [showAdd, setShowAdd] = useState(false);
   const [editingGoal, setEditingGoal] = useState(false);
   const [goalInput, setGoalInput] = useState("");
@@ -843,7 +844,10 @@ function App() {
   const goalTarget = goals[currentYear] || 0;
   const booksReadThisYear = books.filter((b) => b.shelf === "read" && yearOf(b.dateFinished) === currentYear).length;
   const shelfCounts = SHELVES.reduce((acc, s) => { acc[s.id] = books.filter((b) => b.shelf === s.id).length; return acc; }, {});
-  const visibleBooks = books.filter((b) => b.shelf === activeShelf);
+  const visibleBooks = books
+    .filter((b) => b.shelf === activeShelf)
+    .filter((b) => ownedFilter === "all" || (ownedFilter === "owned" ? b.owned : !b.owned));
+  const notOwnedInShelfCount = books.filter((b) => b.shelf === activeShelf && !b.owned).length;
 
   const aggregatedDailyPages = aggregateDailyPages(books);
   const activityYear = activityMonth.getFullYear();
@@ -883,16 +887,45 @@ function App() {
 
         <div style={{ display: "flex", gap: "6px", marginBottom: "18px", flexWrap: "wrap" }}>
           {SHELVES.map((s) => (
-            <button key={s.id} onClick={() => setActiveShelf(s.id)} style={{ fontFamily: "'Special Elite', monospace", fontSize: "11px", letterSpacing: "0.05em", textTransform: "uppercase", padding: "9px 14px", borderRadius: "3px 3px 0 0", cursor: "pointer", border: "1px solid #9C8563", borderBottom: activeShelf === s.id ? "1px solid #F2ECDD" : "1px solid #9C8563", background: activeShelf === s.id ? "#F2ECDD" : "#DCD0B4", color: "#262220", position: "relative", top: "1px" }}>
+            <button key={s.id} onClick={() => { setActiveShelf(s.id); setOwnedFilter("all"); }} style={{ fontFamily: "'Special Elite', monospace", fontSize: "11px", letterSpacing: "0.05em", textTransform: "uppercase", padding: "9px 14px", borderRadius: "3px 3px 0 0", cursor: "pointer", border: "1px solid #9C8563", borderBottom: activeShelf === s.id ? "1px solid #F2ECDD" : "1px solid #9C8563", background: activeShelf === s.id ? "#F2ECDD" : "#DCD0B4", color: "#262220", position: "relative", top: "1px" }}>
               {s.label} ({shelfCounts[s.id] || 0})
             </button>
           ))}
         </div>
 
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "4px" }}>
+            {[
+              { id: "all", label: "All" },
+              { id: "owned", label: "Owned" },
+              { id: "notOwned", label: "Not owned" },
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setOwnedFilter(f.id)}
+                style={{
+                  fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", letterSpacing: "0.05em", textTransform: "uppercase",
+                  padding: "5px 10px", borderRadius: "12px", cursor: "pointer",
+                  border: `1px solid ${ownedFilter === f.id ? "#1F3B57" : "#C9BC9C"}`,
+                  background: ownedFilter === f.id ? "#1F3B57" : "transparent",
+                  color: ownedFilter === f.id ? "#F2ECDD" : "#8C7A5C",
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          {activeShelf === "toRead" && notOwnedInShelfCount > 0 && (
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", color: "#A63A2C" }}>
+              {notOwnedInShelfCount} to buy
+            </div>
+          )}
+        </div>
+
         {visibleBooks.length === 0 ? (
           <div style={{ textAlign: "center", padding: "40px 20px", color: "#8C7A5C", border: "1px dashed #9C8563", borderRadius: "4px", marginBottom: "22px" }}>
             <BookOpenIcon size={22} style={{ marginBottom: "8px" }} />
-            <div style={{ fontSize: "13px" }}>No cards in this drawer yet. Add a book to get started.</div>
+            <div style={{ fontSize: "13px" }}>{ownedFilter === "all" ? "No cards in this drawer yet. Add a book to get started." : "No books match this filter."}</div>
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "14px", marginBottom: "22px" }}>
