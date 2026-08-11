@@ -57,7 +57,7 @@ main{max-width:640px;margin:0 auto;padding:20px 16px}
 .bw{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:6px}
 .bl{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--faint)}
 .ld2{width:6px;height:6px;border-radius:50%;background:#9ca3af;flex-shrink:0}
-.div{height:1px;background:var(--border);margin:20px 0}
+.dv{height:1px;background:var(--border);margin:20px 0}
 .rb{width:100%;padding:14px;background:var(--surface);color:var(--text);border:1.5px solid var(--border);border-radius:16px;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer}
 footer{text-align:center;font-size:11px;color:var(--faint);padding:20px 16px 0;letter-spacing:1px}
 </style>
@@ -99,7 +99,7 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:20px 16px 0;l
     <p class="rl">Scan results</p>
     <p class="rt" id="rt">Books found for you</p>
     <div id="bc"></div>
-    <div class="div"></div>
+    <div class="dv"></div>
     <button class="rb" onclick="reset()">&#8592; Scan another shelf</button>
   </div>
 </main>
@@ -107,8 +107,8 @@ footer{text-align:center;font-size:11px;color:var(--faint);padding:20px 16px 0;l
 <script>
 var b64=null,mime='image/jpeg',lt=null;
 var M=["Reading the spines...","Matching your taste...","Checking your read list...","Finding your next chapter...","Almost there..."];
-var K="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";
-var P='You are a book recommendation assistant. Look at this bookshelf image carefully. Identify ALL visible book titles and authors. Recommend books matching this reader who LOVES: psychological thrillers (Silent Patient style), Indian fiction (Bangalore Detectives Club style), Hosseini emotional fiction, mythology retellings with female leads, Harry Potter fantasy, cozy mysteries, Agatha Christie, Paulo Coelho, classic literary fiction. SKIP these already-read books: Silent Patient, Girl on the Train, Palace of Illusions, Bangalore Detectives Club, Thousand Splendid Suns, And Mountains Echoed, Little Women, The Shining, all Harry Potter books, Good Girl Guide to Murder, Veronika Decides to Die, Brida, A Shimla Affair, Listerdale Mystery, What She Found in the Woods, Hobbit, Game of Thrones, Fault in Our Stars, I Am Malala, Midnight Doorways, Silent Widow, Becoming, A Nation of Idiots. RESPOND WITH ONLY VALID JSON. No markdown. No text before or after. Start { end }. Max 8. Format: {"recommendations":[{"title":"","author":"","match_level":"strong","why":"one sentence","location":"where in image","calendar_potential":true}],"books_spotted":[]}';
+var PROXY="https://blue-flower-2ef4.rupashiohri.workers.dev";
+var P='You are a book recommendation assistant. Look at this bookshelf image carefully. Identify ALL visible book titles and authors. Recommend books matching this reader who LOVES: psychological thrillers (Silent Patient style), Indian fiction (Bangalore Detectives Club style), Hosseini emotional fiction, mythology retellings with female leads, Harry Potter fantasy, cozy mysteries, Agatha Christie, Paulo Coelho, classic literary fiction. SKIP these already-read: Silent Patient, Girl on the Train, Palace of Illusions, Bangalore Detectives Club, Thousand Splendid Suns, And Mountains Echoed, Little Women, The Shining, all Harry Potter, Good Girl Guide to Murder, Veronika Decides to Die, Brida, A Shimla Affair, Listerdale Mystery, What She Found in the Woods, Hobbit, Game of Thrones, Fault in Our Stars, I Am Malala, Midnight Doorways, Silent Widow, Becoming, A Nation of Idiots. RESPOND WITH ONLY VALID JSON. No markdown. Start { end }. Max 8. Format: {"recommendations":[{"title":"","author":"","match_level":"strong","why":"one sentence","location":"where in image","calendar_potential":true}],"books_spotted":[]}';
 
 document.getElementById('fi').addEventListener('change',function(e){
   var f=e.target.files[0];if(!f)return;
@@ -125,7 +125,7 @@ document.getElementById('fi').addEventListener('change',function(e){
   r.readAsDataURL(f);
 });
 
-function err(m){var e=document.getElementById('eb');e.textContent=m;e.style.display='block';}
+function showErr(m){var e=document.getElementById('eb');e.textContent=m;e.style.display='block';}
 
 async function scan(){
   if(!b64)return;
@@ -136,22 +136,26 @@ async function scan(){
   var i=0;lt=setInterval(function(){i=(i+1)%M.length;document.getElementById('lm').textContent=M[i];},1800);
   function done(){clearInterval(lt);document.getElementById('ld').style.display='none';btn.disabled=false;}
   try{
-    var r=await fetch("https://api.anthropic.com/v1/messages",{
+    var r=await fetch(PROXY,{
       method:"POST",
-      headers:{"Content-Type":"application/json","x-api-key":K,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-calls":"true"},
-      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:4000,messages:[{role:"user",content:[
-        {type:"image",source:{type:"base64",media_type:mime,data:b64}},
-        {type:"text",text:P}
-      ]}]})
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-6",
+        max_tokens:4000,
+        messages:[{role:"user",content:[
+          {type:"image",source:{type:"base64",media_type:mime,data:b64}},
+          {type:"text",text:P}
+        ]}]
+      })
     });
     var d=await r.json();done();
-    if(d.error){err("API error: "+d.error.message);return;}
+    if(d.error){showErr("API error: "+d.error.message);return;}
     var raw=(d.content||[]).map(function(c){return c.text||'';}).join('');
     var f=raw.indexOf('{'),l=raw.lastIndexOf('}');
-    if(f===-1){err("No results. Try a clearer photo with readable spines.");return;}
+    if(f===-1){showErr("No results. Try a clearer photo with readable spines.");return;}
     var p=JSON.parse(raw.substring(f,l+1));
     render(p);
-  }catch(e){done();err("Error: "+e.message);}
+  }catch(e){done();showErr("Error: "+e.message);}
 }
 
 function render(data){
