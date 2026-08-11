@@ -3,307 +3,200 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Brewing Chapters Book Scanner v2</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
+<title>Brewing Chapters - Book Scanner</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
-  :root {
-    --bg: #f7f7f7; --surface: #ffffff; --surface2: #f2f2f2; --border: #e8e8e8;
-    --text-primary: #1a1a1a; --text-secondary: #717171; --text-muted: #b0b0b0;
-    --btn: #3b5998; --btn-hover: #2d4578;
-    --green: #3d7a4a; --green-light: #edf5ee;
-    --blue: #2d6a9f; --blue-light: #eaf2fb;
-    --grey: #6b7280; --grey-light: #f3f4f6; --grey-border: #e5e7eb;
-    --shadow-sm: 0 1px 4px rgba(0,0,0,0.06); --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
-    --radius-sm: 10px; --radius-md: 16px; --radius-lg: 20px;
-  }
-  body { background: var(--bg); font-family: 'Inter', -apple-system, sans-serif; color: var(--text-primary); min-height: 100vh; padding-bottom: 40px; }
-  .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 20px 14px; position: sticky; top: 0; z-index: 10; }
-  .header-inner { max-width: 640px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; }
-  .header-left { display: flex; flex-direction: column; }
-  .header-eyebrow { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--grey); margin-bottom: 2px; }
-  .header-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--text-primary); line-height: 1.1; }
-  .header-badge { background: var(--grey-light); color: var(--grey); font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; padding: 5px 10px; border-radius: 20px; border: 1px solid var(--grey-border); }
-  .main { max-width: 640px; margin: 0 auto; padding: 20px 16px; }
-  .taste-section { margin-bottom: 20px; }
-  .taste-label { font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 10px; }
-  .taste-strip { display: flex; flex-wrap: wrap; gap: 6px; }
-  .taste-pill { font-size: 11px; font-weight: 500; padding: 5px 12px; border-radius: 20px; background: var(--surface); border: 1px solid var(--border); color: var(--text-secondary); }
-  .upload-zone { background: var(--surface); border: 2px dashed var(--border); border-radius: var(--radius-lg); padding: 40px 20px; text-align: center; cursor: pointer; position: relative; margin-bottom: 14px; }
-  .upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
-  .upload-icon { font-size: 40px; margin-bottom: 12px; display: block; }
-  .upload-title { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
-  .upload-sub { font-size: 13px; color: var(--text-secondary); }
-  .scan-btn { width: 100%; padding: 16px; background: var(--btn); color: #fff; border: none; border-radius: var(--radius-md); font-family: 'Inter', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer; display: none; box-shadow: 0 4px 12px rgba(59,89,152,0.3); margin-bottom: 0; }
-  .loading { display: none; text-align: center; padding: 32px 20px; background: var(--surface); border-radius: var(--radius-lg); margin-top: 14px; }
-  .loading-dots { display: flex; justify-content: center; gap: 8px; margin-bottom: 14px; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--btn); animation: pulse 1.4s infinite ease-in-out; }
-  .dot:nth-child(2) { animation-delay: 0.2s; } .dot:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes pulse { 0%,80%,100%{transform:scale(0.5);opacity:0.3} 40%{transform:scale(1);opacity:1} }
-  .loading-title { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
-  .loading-sub { font-size: 13px; color: var(--text-secondary); }
-  .error-box { display: none; background: #fff5f5; border: 1px solid #ffd0d0; border-radius: var(--radius-md); padding: 14px 16px; margin-top: 14px; font-size: 13px; color: #c0392b; font-weight: 500; }
-  .debug-box { display: none; background: #f8f8f8; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; margin-top: 8px; font-size: 10px; color: var(--text-secondary); word-break: break-all; max-height: 160px; overflow-y: auto; font-family: monospace; }
-  .results { display: none; margin-top: 20px; }
-  .image-wrap { position: relative; width: 100%; border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 20px; box-shadow: var(--shadow-md); }
-  .image-wrap img { width: 100%; display: block; }
-  #highlightCanvas { position: absolute; top: 0; left: 0; pointer-events: none; }
-  .results-section-label { font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
-  .results-title { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 16px; line-height: 1.3; }
-  .book-card { background: var(--surface); border-radius: var(--radius-md); padding: 16px; margin-bottom: 10px; box-shadow: var(--shadow-sm); border: 1px solid var(--border); display: flex; gap: 14px; align-items: flex-start; }
-  .book-num-wrap { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px; font-weight: 700; }
-  .book-num-wrap.strong { background: var(--green-light); color: var(--green); }
-  .book-num-wrap.good { background: var(--green-light); color: var(--green); }
-  .book-num-wrap.consider { background: var(--blue-light); color: var(--blue); }
-  .book-info { flex: 1; min-width: 0; }
-  .book-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; align-items: center; }
-  .match-tag { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; padding: 3px 9px; border-radius: 20px; }
-  .match-tag.strong { background: var(--green-light); color: var(--green); }
-  .match-tag.good { background: var(--green-light); color: var(--green); }
-  .match-tag.consider { background: var(--blue-light); color: var(--blue); }
-  .cal-flag { font-size: 10px; font-weight: 500; color: var(--text-secondary); background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 3px 9px; }
-  .book-title { font-size: 15px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; line-height: 1.3; }
-  .book-author { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; font-style: italic; }
-  .book-why { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 8px; }
-  .book-loc { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-muted); font-weight: 500; }
-  .loc-dot { width: 6px; height: 6px; border-radius: 50%; background: #9ca3af; flex-shrink: 0; }
-  .section-divider { height: 1px; background: var(--border); margin: 20px 0; }
-  .reset-btn { width: 100%; padding: 14px; background: var(--surface); color: var(--text-primary); border: 1.5px solid var(--border); border-radius: var(--radius-md); font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 12px; }
-  .footer { text-align: center; font-size: 11px; color: var(--text-muted); padding: 20px 16px 0; letter-spacing: 1px; font-weight: 500; }
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+:root{--bg:#f7f7f7;--surface:#fff;--surface2:#f2f2f2;--border:#e8e8e8;--text:#1a1a1a;--muted:#717171;--faint:#b0b0b0;--btn:#3b5998;--btn-hover:#2d4578;--green:#3d7a4a;--green-light:#edf5ee;--blue:#2d6a9f;--blue-light:#eaf2fb;--grey:#6b7280;--grey-light:#f3f4f6;--grey-border:#e5e7eb}
+body{background:var(--bg);font-family:'Inter',system-ui,sans-serif;color:var(--text);min-height:100vh;padding-bottom:60px}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 20px;position:sticky;top:0;z-index:10}
+.hi{max-width:640px;margin:0 auto;display:flex;align-items:center;justify-content:space-between}
+.ey{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--grey);margin-bottom:2px}
+h1{font-family:'Playfair Display',serif;font-size:20px;color:var(--text)}
+.badge{background:var(--grey-light);color:var(--grey);font-size:9px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:5px 10px;border-radius:20px;border:1px solid var(--grey-border)}
+main{max-width:640px;margin:0 auto;padding:20px 16px}
+.tl{font-size:11px;font-weight:600;color:var(--faint);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
+.pill{font-size:11px;padding:5px 12px;border-radius:20px;background:var(--surface);border:1px solid var(--border);color:var(--muted)}
+.uz{background:var(--surface);border:2px dashed var(--border);border-radius:20px;padding:40px 20px;text-align:center;cursor:pointer;margin-bottom:14px;position:relative;transition:border-color .2s}
+.uz:hover{border-color:var(--btn)}
+.uz input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.ui{font-size:40px;display:block;margin-bottom:12px}
+.ut{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px}
+.us{font-size:13px;color:var(--muted)}
+#pi{width:100%;display:none;max-height:340px;object-fit:cover;border-radius:16px;margin-bottom:14px}
+.btn{width:100%;padding:16px;background:var(--btn);color:#fff;border:none;border-radius:16px;font-family:'Inter',sans-serif;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px rgba(59,89,152,.3);display:none;transition:background .2s}
+.btn:hover{background:var(--btn-hover)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.ld{display:none;background:var(--surface);border-radius:20px;padding:32px 20px;text-align:center;margin-top:14px}
+.dots{display:flex;justify-content:center;gap:8px;margin-bottom:14px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--btn);animation:pulse 1.4s ease-in-out infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,80%,100%{transform:scale(.5);opacity:.3}40%{transform:scale(1);opacity:1}}
+.lt{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px}
+.ls{font-size:13px;color:var(--muted)}
+.err{display:none;background:#fff5f5;border:1px solid #ffd0d0;border-radius:16px;padding:14px 16px;margin-top:14px;font-size:13px;color:#c0392b;font-weight:500;line-height:1.6}
+.res{display:none;margin-top:20px}
+.iw{position:relative;border-radius:20px;overflow:hidden;margin-bottom:20px;box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.iw img{width:100%;display:block}
+#dc{position:absolute;top:0;left:0;pointer-events:none}
+.rl{font-size:11px;font-weight:600;color:var(--faint);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.rt{font-size:20px;font-weight:700;color:var(--text);margin-bottom:16px}
+.card{background:var(--surface);border-radius:16px;padding:16px;margin-bottom:10px;box-shadow:0 1px 4px rgba(0,0,0,.06);border:1px solid var(--border);display:flex;gap:14px;align-items:flex-start}
+.num{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:700}
+.num.strong,.num.good{background:var(--green-light);color:var(--green)}
+.num.consider{background:var(--blue-light);color:var(--blue)}
+.cb{flex:1;min-width:0}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center}
+.tag{font-size:10px;font-weight:600;text-transform:uppercase;padding:3px 9px;border-radius:20px;letter-spacing:.5px}
+.tag.strong,.tag.good{background:var(--green-light);color:var(--green)}
+.tag.consider{background:var(--blue-light);color:var(--blue)}
+.tag.cal{background:var(--surface2);color:var(--muted);border:1px solid var(--border);font-weight:500;text-transform:none}
+.bt{font-size:15px;font-weight:700;color:var(--text);margin-bottom:2px;line-height:1.3}
+.ba{font-size:13px;color:var(--muted);margin-bottom:6px;font-style:italic}
+.bw{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:6px}
+.bl{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--faint)}
+.ld2{width:6px;height:6px;border-radius:50%;background:#9ca3af;flex-shrink:0}
+.div{height:1px;background:var(--border);margin:20px 0}
+.rb{width:100%;padding:14px;background:var(--surface);color:var(--text);border:1.5px solid var(--border);border-radius:16px;font-family:'Inter',sans-serif;font-size:14px;font-weight:600;cursor:pointer}
+footer{text-align:center;font-size:11px;color:var(--faint);padding:20px 16px 0;letter-spacing:1px}
 </style>
 </head>
 <body>
-<div class="header">
-  <div class="header-inner">
-    <div class="header-left">
-      <span class="header-eyebrow">Brewing Chapters</span>
-      <h1 class="header-title">Book Scanner</h1>
-    </div>
-    <span class="header-badge">Bengaluru</span>
+<header>
+  <div class="hi">
+    <div><div class="ey">Brewing Chapters</div><h1>Book Scanner</h1></div>
+    <span class="badge">Bengaluru</span>
   </div>
-</div>
-<div class="main">
-  <div class="taste-section">
-    <p class="taste-label">Your taste profile</p>
-    <div class="taste-strip">
-      <span class="taste-pill">🔪 Psychological Thrillers</span>
-      <span class="taste-pill">🇮🇳 Indian Fiction</span>
-      <span class="taste-pill">⚡ Mythology Retellings</span>
-      <span class="taste-pill">📖 Literary Fiction</span>
-      <span class="taste-pill">☕ Cozy Mysteries</span>
-      <span class="taste-pill">🧙 Fantasy / HP</span>
-      <span class="taste-pill">💙 Hosseini-style</span>
-    </div>
+</header>
+<main>
+  <p class="tl">Your taste profile</p>
+  <div class="pills">
+    <span class="pill">&#128298; Thrillers</span>
+    <span class="pill">&#127470;&#127475; Indian Fiction</span>
+    <span class="pill">&#9889; Mythology</span>
+    <span class="pill">&#128214; Literary Fiction</span>
+    <span class="pill">&#9749; Cozy Mysteries</span>
+    <span class="pill">&#129497; Fantasy/HP</span>
+    <span class="pill">&#128153; Hosseini-style</span>
   </div>
-  <div class="upload-zone" id="uploadZone">
-    <input type="file" id="fileInput" accept="image/*" capture="environment">
-    <span class="upload-icon">📚</span>
-    <p class="upload-title">Photograph a bookshelf</p>
-    <p class="upload-sub">Tap to open camera or choose a photo</p>
+  <div class="uz" id="uz">
+    <input type="file" id="fi" accept="image/*" capture="environment">
+    <span class="ui">&#128218;</span>
+    <p class="ut">Photograph a bookshelf</p>
+    <p class="us">Tap to open camera or choose a photo</p>
   </div>
-  <button class="scan-btn" id="scanBtn" onclick="scanBooks()">Find my books →</button>
-  <div class="loading" id="loading">
-    <div class="loading-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-    <p class="loading-title" id="loadingText">Reading the spines...</p>
-    <p class="loading-sub">Matching against your taste profile</p>
+  <img id="pi" alt="Preview"/>
+  <button class="btn" id="sb" onclick="scan()">Find my books &#8594;</button>
+  <div class="ld" id="ld">
+    <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    <p class="lt" id="lm">Reading the spines...</p>
+    <p class="ls">Matching against your taste profile</p>
   </div>
-  <div class="error-box" id="errorBox"></div>
-  <div class="debug-box" id="debugBox"></div>
-  <div class="results" id="results">
-    <div class="image-wrap" id="imageWrap">
-      <img id="previewImg" src="" alt="Scanned bookshelf"/>
-      <canvas id="highlightCanvas"></canvas>
-    </div>
-    <p class="results-section-label">Scan results</p>
-    <p class="results-title" id="resultsHeader">Books matched to your taste</p>
-    <div id="bookCards"></div>
-    <div class="section-divider"></div>
-    <button class="reset-btn" onclick="resetScanner()">← Scan another shelf</button>
+  <div class="err" id="eb"></div>
+  <div class="res" id="res">
+    <div class="iw"><img id="ri" src="" alt=""/><canvas id="dc"></canvas></div>
+    <p class="rl">Scan results</p>
+    <p class="rt" id="rt">Books found for you</p>
+    <div id="bc"></div>
+    <div class="div"></div>
+    <button class="rb" onclick="reset()">&#8592; Scan another shelf</button>
   </div>
-</div>
-<p class="footer">BREWING CHAPTERS · BENGALURU · Powered by Claude</p>
+</main>
+<footer>BREWING CHAPTERS &middot; BENGALURU &middot; Powered by Claude</footer>
 <script>
-var uploadedBase64 = null;
-var uploadedMime = 'image/jpeg';
-var loadingInterval = null;
+var b64=null,mime='image/jpeg',lt=null;
+var M=["Reading the spines...","Matching your taste...","Checking your read list...","Finding your next chapter...","Almost there..."];
+var K="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";
+var P='You are a book recommendation assistant. Look at this bookshelf image carefully. Identify ALL visible book titles and authors. Recommend books matching this reader who LOVES: psychological thrillers (Silent Patient style), Indian fiction (Bangalore Detectives Club style), Hosseini emotional fiction, mythology retellings with female leads, Harry Potter fantasy, cozy mysteries, Agatha Christie, Paulo Coelho, classic literary fiction. SKIP these already-read books: Silent Patient, Girl on the Train, Palace of Illusions, Bangalore Detectives Club, Thousand Splendid Suns, And Mountains Echoed, Little Women, The Shining, all Harry Potter books, Good Girl Guide to Murder, Veronika Decides to Die, Brida, A Shimla Affair, Listerdale Mystery, What She Found in the Woods, Hobbit, Game of Thrones, Fault in Our Stars, I Am Malala, Midnight Doorways, Silent Widow, Becoming, A Nation of Idiots. RESPOND WITH ONLY VALID JSON. No markdown. No text before or after. Start { end }. Max 8. Format: {"recommendations":[{"title":"","author":"","match_level":"strong","why":"one sentence","location":"where in image","calendar_potential":true}],"books_spotted":[]}';
 
-var TASTE_SYSTEM = "You are a book recommendation assistant. You will receive an image of a bookshelf. Identify all visible book titles and authors. Then recommend which ones match this reader profile based on her actual Goodreads ratings: LOVED (5 stars): Palace of Illusions, Bangalore Detectives Club, A Good Girl's Guide to Murder, Harry Potter series (all 7), A Nation of Idiots, Khullam Khulla Rishi Kapoor Uncensored, The Silent Patient. LIKED (4 stars): Girl on the Train, A Thousand Splendid Suns, And the Mountains Echoed, Brida, Veronika Decides to Die, Little Women, The Shining, Sidney Sheldon's Silent Widow, What She Found in the Woods, The Fault in Our Stars, Agatha Christie Listerdale Mystery, A Shimla Affair, Becoming Michelle Obama, Mayada Daughter of Iraq. NEUTRAL/DISLIKED (1-2 stars): I Am Malala, Midnight Doorways, Invisible Girlfriend. Her genres: psychological thrillers, Indian fiction set in real cities, Hosseini-style emotional literary fiction, mythology retellings with female protagonists, Harry Potter style fantasy, cozy mysteries, Paulo Coelho philosophical fiction, classic literary fiction. She dislikes: military thrillers, sci-fi, very light chick-lit, celebrity memoirs (low rated). Do NOT recommend already-read books: Silent Patient, Girl on the Train, Palace of Illusions, Bangalore Detectives Club, Thousand Splendid Suns, And Mountains Echoed, Little Women, The Shining, all Harry Potter books, Good Girl's Guide to Murder, Veronika Decides to Die, Brida, A Shimla Affair, Listerdale Mystery, What She Found in the Woods, Hobbit, Game of Thrones, Fault in Our Stars, I Am Malala, Midnight Doorways, Invisible Girlfriend, Becoming, Khullam Khulla, A Nation of Idiots, Mayada Daughter of Iraq, Silent Widow. You must respond with ONLY a JSON object. No markdown. No explanation. No text before or after. Start with { and end with }. Keep recommendations to maximum 8 books to avoid truncation. Use this exact structure: {\"recommendations\":[{\"title\":\"Book Title\",\"author\":\"Author\",\"match_level\":\"strong\",\"why\":\"one sentence\",\"location\":\"where in the image\",\"calendar_potential\":true}],\"books_spotted\":[\"title1\",\"title2\"]}";
-
-document.getElementById('fileInput').addEventListener('change', function(e) {
-  var file = e.target.files[0];
-  if (file) handleFile(file);
+document.getElementById('fi').addEventListener('change',function(e){
+  var f=e.target.files[0];if(!f)return;
+  mime=f.type||'image/jpeg';
+  var r=new FileReader();
+  r.onload=function(v){
+    b64=v.target.result.split(',')[1];
+    document.getElementById('uz').style.display='none';
+    var i=document.getElementById('pi');i.src=v.target.result;i.style.display='block';
+    document.getElementById('sb').style.display='block';
+    document.getElementById('res').style.display='none';
+    document.getElementById('eb').style.display='none';
+  };
+  r.readAsDataURL(f);
 });
 
-function handleFile(file) {
-  uploadedMime = file.type || 'image/jpeg';
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    var dataUrl = e.target.result;
-    uploadedBase64 = dataUrl.split(',')[1];
-    var zone = document.getElementById('uploadZone');
-    zone.style.padding = '0';
-    zone.style.border = 'none';
-    zone.style.borderRadius = '16px';
-    zone.style.overflow = 'hidden';
-    zone.innerHTML = '<img src="' + dataUrl + '" style="width:100%;display:block;max-height:340px;object-fit:cover;border-radius:16px;" alt="Preview"/>';
-    document.getElementById('scanBtn').style.display = 'block';
-    document.getElementById('results').style.display = 'none';
-    document.getElementById('errorBox').style.display = 'none';
-    document.getElementById('debugBox').style.display = 'none';
-  };
-  reader.readAsDataURL(file);
-}
+function err(m){var e=document.getElementById('eb');e.textContent=m;e.style.display='block';}
 
-var msgs = ["Reading the spines...","Matching your taste profile...","Checking your read list...","Finding your next chapter...","Almost there..."];
-
-function showDebug(text) {
-  var d = document.getElementById('debugBox');
-  d.style.display = 'block';
-  d.textContent = text;
-}
-
-function showError(text) {
-  var e = document.getElementById('errorBox');
-  e.style.display = 'block';
-  e.textContent = text;
-}
-
-async function scanBooks() {
-  if (!uploadedBase64) return;
-  var btn = document.getElementById('scanBtn');
-  btn.disabled = true;
-  document.getElementById('loading').style.display = 'block';
-  document.getElementById('results').style.display = 'none';
-  document.getElementById('errorBox').style.display = 'none';
-  document.getElementById('debugBox').style.display = 'none';
-
-  var msgIdx = 0;
-  loadingInterval = setInterval(function() {
-    msgIdx = (msgIdx + 1) % msgs.length;
-    document.getElementById('loadingText').textContent = msgs[msgIdx];
-  }, 1800);
-
-  function done() {
-    clearInterval(loadingInterval);
-    document.getElementById('loading').style.display = 'none';
-    btn.disabled = false;
-  }
-
-  try {
-    var response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 4000,
-        system: TASTE_SYSTEM,
-        messages: [{
-          role: "user",
-          content: [
-            { type: "image", source: { type: "base64", media_type: uploadedMime, data: uploadedBase64 } },
-            { type: "text", text: "Scan this bookshelf and return your JSON recommendations. Maximum 8 recommendations." }
-          ]
-        }]
-      })
+async function scan(){
+  if(!b64)return;
+  var btn=document.getElementById('sb');btn.disabled=true;
+  document.getElementById('ld').style.display='block';
+  document.getElementById('res').style.display='none';
+  document.getElementById('eb').style.display='none';
+  var i=0;lt=setInterval(function(){i=(i+1)%M.length;document.getElementById('lm').textContent=M[i];},1800);
+  function done(){clearInterval(lt);document.getElementById('ld').style.display='none';btn.disabled=false;}
+  try{
+    var r=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-api-key":K,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-calls":"true"},
+      body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:4000,messages:[{role:"user",content:[
+        {type:"image",source:{type:"base64",media_type:mime,data:b64}},
+        {type:"text",text:P}
+      ]}]})
     });
-
-    var responseText = await response.text();
-    done();
-
-    showDebug("HTTP " + response.status + " | " + responseText.substring(0, 600));
-
-    var apiData;
-    try { apiData = JSON.parse(responseText); }
-    catch(e) { showError("Could not parse API response. See debug."); return; }
-
-    if (apiData.error) { showError("Claude error: " + (apiData.error.message || JSON.stringify(apiData.error))); return; }
-    if (!apiData.content || !apiData.content[0]) { showError("Unexpected response. See debug."); return; }
-
-    var raw = apiData.content.map(function(i) { return i.text || ''; }).join('');
-    var first = raw.indexOf('{');
-    var last = raw.lastIndexOf('}');
-    if (first === -1 || last === -1) { showError("No JSON in response: " + raw.substring(0, 200)); return; }
-
-    var parsed;
-    try { parsed = JSON.parse(raw.substring(first, last + 1)); }
-    catch(e) { showError("JSON parse failed: " + e.message); showDebug(raw.substring(0, 400)); return; }
-
-    renderResults(parsed);
-
-  } catch(err) {
-    done();
-    showError("Error: " + err.message);
-  }
+    var d=await r.json();done();
+    if(d.error){err("API error: "+d.error.message);return;}
+    var raw=(d.content||[]).map(function(c){return c.text||'';}).join('');
+    var f=raw.indexOf('{'),l=raw.lastIndexOf('}');
+    if(f===-1){err("No results. Try a clearer photo with readable spines.");return;}
+    var p=JSON.parse(raw.substring(f,l+1));
+    render(p);
+  }catch(e){done();err("Error: "+e.message);}
 }
 
-function renderResults(data) {
-  var recs = data.recommendations || [];
-  var spotted = data.books_spotted || [];
-  document.getElementById('resultsHeader').textContent = recs.length + ' books found for you' + (spotted.length ? ' · saw ' + spotted.length + ' titles total' : '');
-  var img = document.getElementById('previewImg');
-  img.src = 'data:' + uploadedMime + ';base64,' + uploadedBase64;
-  var cardsDiv = document.getElementById('bookCards');
-  cardsDiv.innerHTML = '';
-  if (recs.length === 0) {
-    cardsDiv.innerHTML = '<div style="text-align:center;padding:32px 20px;color:var(--text-secondary);font-size:14px;">No strong matches on this shelf.</div>';
-  } else {
-    recs.forEach(function(book, i) {
-      var ml = book.match_level === 'strong' ? 'strong' : book.match_level === 'good' ? 'good' : 'consider';
-      var levelLabel = ml === 'strong' ? 'Strong match' : ml === 'good' ? 'Good match' : 'Worth considering';
-      var cal = book.calendar_potential ? '<span class="cal-flag">📅 Content idea</span>' : '';
-      cardsDiv.innerHTML += '<div class="book-card"><div class="book-num-wrap ' + ml + '">' + (i+1) + '</div><div class="book-info"><div class="book-tags"><span class="match-tag ' + ml + '">' + levelLabel + '</span>' + cal + '</div><p class="book-title">' + (book.title||'') + '</p><p class="book-author">' + (book.author||'') + '</p><p class="book-why">' + (book.why||'') + '</p><div class="book-loc"><div class="loc-dot"></div>' + (book.location||'') + '</div></div></div>';
-    });
-  }
-  img.onload = function() {
-    var wrap = document.getElementById('imageWrap');
-    var canvas = document.getElementById('highlightCanvas');
-    canvas.width = wrap.offsetWidth;
-    canvas.height = img.offsetHeight;
-    canvas.style.width = wrap.offsetWidth + 'px';
-    canvas.style.height = img.offsetHeight + 'px';
-    var ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    recs.forEach(function(book, i) {
-      var color = book.match_level === 'strong' ? '#3d7a4a' : book.match_level === 'good' ? '#3d7a4a' : '#2d6a9f';
-      var loc = (book.location || '').toLowerCase();
-      var x = canvas.width * 0.5, y = canvas.height * 0.5;
-      if (loc.includes('top')) y = canvas.height * 0.14;
-      else if (loc.includes('upper')) y = canvas.height * 0.3;
-      else if (loc.includes('lower')) y = canvas.height * 0.7;
-      else if (loc.includes('bottom')) y = canvas.height * 0.86;
-      if (loc.includes('far left')) x = canvas.width * 0.08;
-      else if (loc.includes('left')) x = canvas.width * 0.22;
-      else if (loc.includes('far right')) x = canvas.width * 0.92;
-      else if (loc.includes('right')) x = canvas.width * 0.78;
-      x += (i % 3 - 1) * 24; y += (Math.floor(i/3) % 2) * 16;
-      x = Math.max(22, Math.min(canvas.width - 22, x));
-      y = Math.max(22, Math.min(canvas.height - 22, y));
-      ctx.beginPath(); ctx.arc(x, y, 18, 0, Math.PI * 2);
-      ctx.fillStyle = color; ctx.fill();
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.stroke();
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '700 13px Inter, sans-serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(i + 1, x, y);
-    });
-  };
-  document.getElementById('results').style.display = 'block';
-  document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
-}
-
-function resetScanner() {
-  uploadedBase64 = null;
-  document.getElementById('results').style.display = 'none';
-  document.getElementById('scanBtn').style.display = 'none';
-  document.getElementById('errorBox').style.display = 'none';
-  document.getElementById('debugBox').style.display = 'none';
-  var zone = document.getElementById('uploadZone');
-  zone.style.cssText = '';
-  zone.innerHTML = '<input type="file" id="fileInput" accept="image/*" capture="environment"><span class="upload-icon">📚</span><p class="upload-title">Photograph a bookshelf</p><p class="upload-sub">Tap to open camera or choose a photo</p>';
-  document.getElementById('fileInput').addEventListener('change', function(e) {
-    var file = e.target.files[0];
-    if (file) handleFile(file);
+function render(data){
+  var recs=data.recommendations||[],sp=data.books_spotted||[];
+  document.getElementById('rt').textContent=recs.length+' books found for you'+(sp.length?' · saw '+sp.length+' titles':'');
+  document.getElementById('ri').src=document.getElementById('pi').src;
+  var bc=document.getElementById('bc');bc.innerHTML='';
+  recs.forEach(function(bk,i){
+    var ml=bk.match_level==='strong'?'strong':bk.match_level==='good'?'good':'consider';
+    var lb=ml==='strong'?'Strong match':ml==='good'?'Good match':'Worth considering';
+    var cl=bk.calendar_potential?'<span class="tag cal">&#128197; Content idea</span>':'';
+    bc.innerHTML+='<div class="card"><div class="num '+ml+'">'+(i+1)+'</div><div class="cb"><div class="tags"><span class="tag '+ml+'">'+lb+'</span>'+cl+'</div><p class="bt">'+(bk.title||'')+'</p><p class="ba">'+(bk.author||'')+'</p><p class="bw">'+(bk.why||'')+'</p><div class="bl"><div class="ld2"></div>'+(bk.location||'')+'</div></div></div>';
   });
+  document.getElementById('res').style.display='block';
+  var ri=document.getElementById('ri');
+  function dots(){
+    var cv=document.getElementById('dc'),w=ri.offsetWidth,h=ri.offsetHeight;
+    cv.width=w;cv.height=h;cv.style.width=w+'px';cv.style.height=h+'px';
+    var ctx=cv.getContext('2d');ctx.clearRect(0,0,w,h);
+    recs.forEach(function(bk,i){
+      var c=bk.match_level==='consider'?'#2d6a9f':'#3d7a4a';
+      var loc=(bk.location||'').toLowerCase();
+      var x=w*.5,y=h*.5;
+      if(loc.includes('top'))y=h*.14;else if(loc.includes('upper'))y=h*.3;else if(loc.includes('lower'))y=h*.7;else if(loc.includes('bottom'))y=h*.86;
+      if(loc.includes('far left'))x=w*.08;else if(loc.includes('left'))x=w*.22;else if(loc.includes('far right'))x=w*.92;else if(loc.includes('right'))x=w*.78;
+      x+=(i%3-1)*24;y+=(Math.floor(i/3)%2)*16;
+      x=Math.max(22,Math.min(w-22,x));y=Math.max(22,Math.min(h-22,y));
+      ctx.beginPath();ctx.arc(x,y,18,0,Math.PI*2);ctx.fillStyle=c;ctx.fill();
+      ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();
+      ctx.fillStyle='#fff';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(i+1,x,y);
+    });
+  }
+  if(ri.complete)dots();else ri.onload=dots;
+  document.getElementById('res').scrollIntoView({behavior:'smooth'});
+}
+
+function reset(){
+  b64=null;
+  document.getElementById('uz').style.display='block';
+  document.getElementById('pi').style.display='none';
+  document.getElementById('sb').style.display='none';
+  document.getElementById('res').style.display='none';
+  document.getElementById('eb').style.display='none';
+  document.getElementById('fi').value='';
 }
 </script>
 </body>
