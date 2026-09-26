@@ -95,125 +95,6 @@ function goodreadsRowToBook(row) {
   };
 }
 
-// Bundled local catalog for offline autocomplete (title, author, typical page count).
-const BOOK_LIBRARY = [
-  ["To Kill a Mockingbird","Harper Lee",336],["1984","George Orwell",328],["Animal Farm","George Orwell",112],
-  ["Pride and Prejudice","Jane Austen",432],["The Great Gatsby","F. Scott Fitzgerald",180],["Moby-Dick","Herman Melville",720],
-  ["War and Peace","Leo Tolstoy",1225],["Crime and Punishment","Fyodor Dostoevsky",671],["The Brothers Karamazov","Fyodor Dostoevsky",824],
-  ["Anna Karenina","Leo Tolstoy",864],["Jane Eyre","Charlotte Brontë",507],["Wuthering Heights","Emily Brontë",416],
-  ["The Catcher in the Rye","J.D. Salinger",277],["Lord of the Flies","William Golding",224],["Brave New World","Aldous Huxley",311],
-  ["Fahrenheit 451","Ray Bradbury",256],["The Hobbit","J.R.R. Tolkien",310],["The Fellowship of the Ring","J.R.R. Tolkien",423],
-  ["The Two Towers","J.R.R. Tolkien",352],["The Return of the King","J.R.R. Tolkien",416],["The Silmarillion","J.R.R. Tolkien",365],
-  ["Harry Potter and the Sorcerer's Stone","J.K. Rowling",309],["Harry Potter and the Chamber of Secrets","J.K. Rowling",341],
-  ["Harry Potter and the Prisoner of Azkaban","J.K. Rowling",435],["Harry Potter and the Goblet of Fire","J.K. Rowling",636],
-  ["Harry Potter and the Order of the Phoenix","J.K. Rowling",766],["Harry Potter and the Half-Blood Prince","J.K. Rowling",607],
-  ["Harry Potter and the Deathly Hallows","J.K. Rowling",607],["A Game of Thrones","George R.R. Martin",694],
-  ["A Clash of Kings","George R.R. Martin",761],["A Storm of Swords","George R.R. Martin",973],["A Feast for Crows","George R.R. Martin",753],
-  ["A Dance with Dragons","George R.R. Martin",1056],["The Name of the Wind","Patrick Rothfuss",662],
-  ["The Wise Man's Fear","Patrick Rothfuss",994],["Mistborn: The Final Empire","Brandon Sanderson",541],
-  ["The Way of Kings","Brandon Sanderson",1007],["Dune","Frank Herbert",412],["Dune Messiah","Frank Herbert",256],
-  ["Foundation","Isaac Asimov",255],["I, Robot","Isaac Asimov",253],["Ender's Game","Orson Scott Card",324],
-  ["The Martian","Andy Weir",369],["Project Hail Mary","Andy Weir",496],
-  ["Slaughterhouse-Five","Kurt Vonnegut",275],["The Handmaid's Tale","Margaret Atwood",311],
-  ["Never Let Me Go","Kazuo Ishiguro",288],["The Remains of the Day","Kazuo Ishiguro",258],
-  ["Beloved","Toni Morrison",324],["The Color Purple","Alice Walker",295],["One Hundred Years of Solitude","Gabriel García Márquez",417],
-  ["Love in the Time of Cholera","Gabriel García Márquez",348],["The Alchemist","Paulo Coelho",208],
-  ["Life of Pi","Yann Martel",319],["The Kite Runner","Khaled Hosseini",371],["A Thousand Splendid Suns","Khaled Hosseini",367],
-  ["The Book Thief","Markus Zusak",552],["All the Light We Cannot See","Anthony Doerr",530],
-  ["The Night Circus","Erin Morgenstern",387],["Circe","Madeline Miller",393],["The Song of Achilles","Madeline Miller",416],
-  ["Where the Crawdads Sing","Delia Owens",384],["The Silent Patient","Alex Michaelides",336],
-  ["Gone Girl","Gillian Flynn",419],["Sharp Objects","Gillian Flynn",254],["The Girl on the Train","Paula Hawkins",336],
-  ["The Girl with the Dragon Tattoo","Stieg Larsson",465],["Big Little Lies","Liane Moriarty",460],
-  ["Educated","Tara Westover",334],["Becoming","Michelle Obama",448],["Untamed","Glennon Doyle",352],
-  ["Atomic Habits","James Clear",320],["The Power of Habit","Charles Duhigg",371],["Deep Work","Cal Newport",304],
-  ["Thinking, Fast and Slow","Daniel Kahneman",499],["Sapiens","Yuval Noah Harari",443],["Homo Deus","Yuval Noah Harari",448],
-  ["21 Lessons for the 21st Century","Yuval Noah Harari",372],["Outliers","Malcolm Gladwell",309],
-  ["Blink","Malcolm Gladwell",296],["The Tipping Point","Malcolm Gladwell",301],["David and Goliath","Malcolm Gladwell",305],
-  ["Man's Search for Meaning","Viktor Frankl",165],["The Subtle Art of Not Giving a F*ck","Mark Manson",224],
-  ["Rich Dad Poor Dad","Robert Kiyosaki",336],["The Lean Startup","Eric Ries",336],["Zero to One","Peter Thiel",224],
-  ["Good to Great","Jim Collins",320],["The 7 Habits of Highly Effective People","Stephen Covey",381],
-  ["How to Win Friends and Influence People","Dale Carnegie",291],["Start With Why","Simon Sinek",256],
-  ["Grit","Angela Duckworth",352],["Mindset","Carol Dweck",320],["Quiet","Susan Cain",333],
-  ["The Body Keeps the Score","Bessel van der Kolk",464],["Braiding Sweetgrass","Robin Wall Kimmerer",408],
-  ["The Immortal Life of Henrietta Lacks","Rebecca Skloot",381],["A Brief History of Time","Stephen Hawking",212],
-  ["Cosmos","Carl Sagan",384],["The Selfish Gene","Richard Dawkins",360],["Guns, Germs, and Steel","Jared Diamond",480],
-  ["The Wright Brothers","David McCullough",336],["Team of Rivals","Doris Kearns Goodwin",944],
-  ["Into the Wild","Jon Krakauer",224],["Into Thin Air","Jon Krakauer",368],["The Diary of a Young Girl","Anne Frank",283],
-  ["Night","Elie Wiesel",120],["The Glass Castle","Jeannette Walls",288],["Wild","Cheryl Strayed",336],
-  ["Eat, Pray, Love","Elizabeth Gilbert",352],["The Road","Cormac McCarthy",287],["No Country for Old Men","Cormac McCarthy",309],
-  ["Blood Meridian","Cormac McCarthy",351],["East of Eden","John Steinbeck",601],["Of Mice and Men","John Steinbeck",112],
-  ["The Grapes of Wrath","John Steinbeck",464],["A Farewell to Arms","Ernest Hemingway",332],
-  ["The Old Man and the Sea","Ernest Hemingway",127],["For Whom the Bell Tolls","Ernest Hemingway",480],
-  ["One Flew Over the Cuckoo's Nest","Ken Kesey",325],["The Bell Jar","Sylvia Plath",244],
-  ["Catch-22","Joseph Heller",453],["Invisible Man","Ralph Ellison",581],
-  ["The Sun Also Rises","Ernest Hemingway",251],["Frankenstein","Mary Shelley",280],["Dracula","Bram Stoker",418],
-  ["The Picture of Dorian Gray","Oscar Wilde",254],["Great Expectations","Charles Dickens",544],
-  ["A Tale of Two Cities","Charles Dickens",489],["Oliver Twist","Charles Dickens",608],["David Copperfield","Charles Dickens",882],
-  ["Little Women","Louisa May Alcott",449],["Anne of Green Gables","L.M. Montgomery",320],
-  ["The Secret Garden","Frances Hodgson Burnett",331],["Charlotte's Web","E.B. White",192],
-  ["The Chronicles of Narnia: The Lion, the Witch and the Wardrobe","C.S. Lewis",206],
-  ["Percy Jackson & the Olympians: The Lightning Thief","Rick Riordan",377],
-  ["The Hunger Games","Suzanne Collins",374],["Catching Fire","Suzanne Collins",391],["Mockingjay","Suzanne Collins",390],
-  ["Divergent","Veronica Roth",487],["The Maze Runner","James Dashner",375],["The Fault in Our Stars","John Green",313],
-  ["Looking for Alaska","John Green",221],["Eleanor & Park","Rainbow Rowell",325],["The Perks of Being a Wallflower","Stephen Chbosky",213],
-  ["Twilight","Stephenie Meyer",498],["New Moon","Stephenie Meyer",563],["Eclipse","Stephenie Meyer",629],
-  ["Breaking Dawn","Stephenie Meyer",756],["It","Stephen King",1138],["The Shining","Stephen King",447],
-  ["Carrie","Stephen King",199],["Misery","Stephen King",320],["The Stand","Stephen King",1153],
-  ["Doctor Sleep","Stephen King",531],["11/22/63","Stephen King",849],["Pet Sematary","Stephen King",374],
-  ["The Silence of the Lambs","Thomas Harris",352],["Gone with the Wind","Margaret Mitchell",1037],
-  ["Rebecca","Daphne du Maurier",416],["And Then There Were None","Agatha Christie",264],
-  ["Murder on the Orient Express","Agatha Christie",256],["The Murder of Roger Ackroyd","Agatha Christie",312],
-  ["Sherlock Holmes: A Study in Scarlet","Arthur Conan Doyle",154],["The Hound of the Baskervilles","Arthur Conan Doyle",256],
-  ["The Da Vinci Code","Dan Brown",489],["Angels & Demons","Dan Brown",616],["Inferno","Dan Brown",624],
-  ["The Girl Who Played with Fire","Stieg Larsson",503],["Ready Player One","Ernest Cline",374],
-  ["The Martian Chronicles","Ray Bradbury",222],["Neuromancer","William Gibson",271],["Snow Crash","Neal Stephenson",480],
-  ["The Left Hand of Darkness","Ursula K. Le Guin",304],["A Wizard of Earthsea","Ursula K. Le Guin",183],
-  ["American Gods","Neil Gaiman",541],["Good Omens","Neil Gaiman",412],
-  ["Coraline","Neil Gaiman",162],["The Ocean at the End of the Lane","Neil Gaiman",181],
-  ["Norse Mythology","Neil Gaiman",304],["The Graveyard Book","Neil Gaiman",312],
-  ["Six of Crows","Leigh Bardugo",465],["Shadow and Bone","Leigh Bardugo",358],["Throne of Glass","Sarah J. Maas",406],
-  ["A Court of Thorns and Roses","Sarah J. Maas",432],["Crescent City: House of Earth and Blood","Sarah J. Maas",803],
-  ["The Cruel Prince","Holly Black",384],["Caraval","Stephanie Garber",407],
-  ["Fourth Wing","Rebecca Yarros",512],["Iron Flame","Rebecca Yarros",640],
-  ["Verity","Colleen Hoover",336],["It Ends with Us","Colleen Hoover",384],["Ugly Love","Colleen Hoover",323],
-  ["The Notebook","Nicholas Sparks",214],["A Walk to Remember","Nicholas Sparks",240],["Me Before You","Jojo Moyes",369],
-  ["Normal People","Sally Rooney",273],["Conversations with Friends","Sally Rooney",321],
-  ["Little Fires Everywhere","Celeste Ng",338],["Everything I Never Told You","Celeste Ng",297],
-  ["The Vanishing Half","Brit Bennett",343],["Homegoing","Yaa Gyasi",305],["The Nightingale","Kristin Hannah",440],
-  ["The Four Winds","Kristin Hannah",464],["Lessons in Chemistry","Bonnie Garmus",400],
-  ["Tomorrow, and Tomorrow, and Tomorrow","Gabrielle Zevin",416],["Demon Copperhead","Barbara Kingsolver",560],
-  ["The Covenant of Water","Abraham Verghese",736],["Hamnet","Maggie O'Farrell",305],
-  ["The Midnight Library","Matt Haig",304],["How to Stop Time","Matt Haig",336],
-  ["Klara and the Sun","Kazuo Ishiguro",303],["The Overstory","Richard Powers",502],
-  ["A Little Life","Hanya Yanagihara",720],["The Goldfinch","Donna Tartt",784],["The Secret History","Donna Tartt",559],
-  ["Where the Wild Things Are","Maurice Sendak",48],["Green Eggs and Ham","Dr. Seuss",62],
-  ["The Very Hungry Caterpillar","Eric Carle",26],["Matilda","Roald Dahl",240],["Charlie and the Chocolate Factory","Roald Dahl",192],
-  ["James and the Giant Peach","Roald Dahl",176],["The BFG","Roald Dahl",208],["Fantastic Mr Fox","Roald Dahl",96],
-  ["The Wonderful Wizard of Oz","L. Frank Baum",259],["Alice's Adventures in Wonderland","Lewis Carroll",200],
-  ["The Little Prince","Antoine de Saint-Exupéry",96],["Siddhartha","Hermann Hesse",152],
-  ["The Stranger","Albert Camus",123],["The Plague","Albert Camus",308],["No Longer Human","Osamu Dazai",176],
-  ["Norwegian Wood","Haruki Murakami",389],["Kafka on the Shore","Haruki Murakami",467],
-  ["1Q84","Haruki Murakami",1318],["The Wind-Up Bird Chronicle","Haruki Murakami",607],
-  ["Convenience Store Woman","Sayaka Murata",176],["Before the Coffee Gets Cold","Toshikazu Kawaguchi",213],
-  ["The Housemaid","Freida McFadden",336],
-  ["Thinking in Systems","Donella Meadows",240],["The Innovator's Dilemma","Clayton Christensen",286],
-  ["Freakonomics","Steven Levitt",320],["The Signal and the Noise","Nate Silver",544],
-  ["Endurance","Alfred Lansing",416],["Unbroken","Laura Hillenbrand",528],["Seabiscuit","Laura Hillenbrand",399],
-  ["Salt, Fat, Acid, Heat","Samin Nosrat",480],
-  ["On Writing","Stephen King",320],["Bird by Bird","Anne Lamott",237],["Big Magic","Elizabeth Gilbert",288],
-  ["The Artist's Way","Julia Cameron",270],["Steal Like an Artist","Austin Kleon",160],
-  ["Meditations","Marcus Aurelius",254],["The Republic","Plato",416],["Beyond Good and Evil","Friedrich Nietzsche",240],
-  ["Thus Spoke Zarathustra","Friedrich Nietzsche",352],["The Prince","Niccolò Machiavelli",132],
-  ["Walden","Henry David Thoreau",352],["On the Origin of Species","Charles Darwin",502],
-  ["A People's History of the United States","Howard Zinn",729],["The Wealth of Nations","Adam Smith",1152],
-  ["Capital in the Twenty-First Century","Thomas Piketty",696],
-  ["The Emperor of All Maladies","Siddhartha Mukherjee",571],["When Breath Becomes Air","Paul Kalanithi",228],
-  ["Between the World and Me","Ta-Nehisi Coates",176],["How to Be an Antiracist","Ibram X. Kendi",320],
-  ["The New Jim Crow","Michelle Alexander",312],["Just Mercy","Bryan Stevenson",336],
-  ["Born a Crime","Trevor Noah",304],["Yes Please","Amy Poehler",329],["Bossypants","Tina Fey",288],
-  ["Is Everyone Hanging Out Without Me?","Mindy Kaling",244],["Furiously Happy","Jenny Lawson",329],
-  ["A Promised Land","Barack Obama",768],["Spare","Prince Harry",416],["Open","Andre Agassi",386],
-];
 
 function uid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
 function todayStr() { return new Date().toISOString().slice(0, 10); }
@@ -375,20 +256,46 @@ function AddBookModal({ onClose, onSave }) {
   const [totalPages, setTotalPages] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searching, setSearching] = useState(false);
   const suppressNextSearch = useRef(false);
+  const debounceRef = useRef(null);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     if (suppressNextSearch.current) { suppressNextSearch.current = false; return; }
-    const q = title.trim().toLowerCase();
-    if (q.length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
-    const matches = BOOK_LIBRARY.filter(([t, a]) => t.toLowerCase().includes(q) || a.toLowerCase().includes(q)).slice(0, 6);
-    setSuggestions(matches);
-    setShowSuggestions(matches.length > 0);
+    clearTimeout(debounceRef.current);
+    const q = title.trim();
+    if (q.length < 3) { setSuggestions([]); setShowSuggestions(false); setSearching(false); return; }
+    debounceRef.current = setTimeout(() => {
+      const myRequestId = ++requestIdRef.current;
+      setSearching(true);
+      fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=6`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (myRequestId !== requestIdRef.current) return; // stale response, ignore
+          const matches = (data.items || [])
+            .map((item) => {
+              const info = item.volumeInfo || {};
+              return [info.title || "Untitled", (info.authors && info.authors[0]) || "", info.pageCount || 0];
+            })
+            .filter((m) => m[0]);
+          setSuggestions(matches);
+          setShowSuggestions(matches.length > 0);
+          setSearching(false);
+        })
+        .catch(() => {
+          if (myRequestId !== requestIdRef.current) return;
+          setSuggestions([]);
+          setShowSuggestions(false);
+          setSearching(false);
+        });
+    }, 400);
+    return () => clearTimeout(debounceRef.current);
   }, [title]);
 
   function pickSuggestion([t, a, pages]) {
     suppressNextSearch.current = true;
-    setTitle(t); setAuthor(a); setTotalPages(String(pages));
+    setTitle(t); setAuthor(a); setTotalPages(pages ? String(pages) : "");
     setShowSuggestions(false); setSuggestions([]);
   }
 
@@ -397,12 +304,15 @@ function AddBookModal({ onClose, onSave }) {
       <label style={labelStyle}>Title</label>
       <div style={{ position: "relative", marginBottom: showSuggestions && suggestions.length ? "0" : "12px" }}>
         <input style={{ ...inputStyle, marginBottom: 0 }} value={title} onChange={(e) => setTitle(e.target.value)} onFocus={() => { if (suggestions.length) setShowSuggestions(true); }} placeholder="Start typing a book title…" autoComplete="off" />
+        {searching && (
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", color: "#8C7A5C", marginTop: "4px" }}>searching Google Books…</div>
+        )}
         {showSuggestions && suggestions.length > 0 && (
           <div style={{ border: "1px solid #9C8563", borderTop: "none", borderRadius: "0 0 3px 3px", background: "#FBF8F0", maxHeight: "180px", overflowY: "auto", marginBottom: "12px" }}>
             {suggestions.map(([t, a, pages], i) => (
               <div key={i} onClick={() => pickSuggestion([t, a, pages])} style={{ padding: "7px 10px", cursor: "pointer", fontSize: "13px", color: "#262220", borderBottom: i < suggestions.length - 1 ? "1px solid #E4D9BE" : "none" }} onMouseDown={(e) => e.preventDefault()}>
                 <div style={{ fontFamily: "'Source Serif 4', serif", fontWeight: 600 }}>{t}</div>
-                <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", color: "#8C7A5C" }}>{a} · {pages}p</div>
+                <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", color: "#8C7A5C" }}>{a || "Unknown author"}{pages ? ` · ${pages}p` : ""}</div>
               </div>
             ))}
           </div>
