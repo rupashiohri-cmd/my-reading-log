@@ -724,7 +724,7 @@
       "shelf": "reading",
       "owned": true,
       "totalPages": 156,
-      "currentPage": 36,
+      "currentPage": 48,
       "rating": 0,
       "dateAdded": "2026/06/26",
       "dateStarted": "2026-09-28",
@@ -732,7 +732,7 @@
       "log": [
         {
           "date": "2026-09-28",
-          "page": 36
+          "page": 48
         }
       ]
     },
