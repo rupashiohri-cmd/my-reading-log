@@ -261,26 +261,57 @@ function AddBookModal({ onClose, onSave }) {
   const debounceRef = useRef(null);
   const requestIdRef = useRef(0);
 
+  function normalizeQuery(q) {
+    return q
+      .replace(/[\u2018\u2019\u02BC\u2032]/g, "'")
+      .replace(/[\u201C\u201D]/g, '"');
+  }
+
+  function runBooksSearch(q, myRequestId) {
+    return fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=6`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (myRequestId !== requestIdRef.current) return null;
+        const matches = (data.items || [])
+          .map((item) => {
+            const info = item.volumeInfo || {};
+            return [info.title || "Untitled", (info.authors && info.authors[0]) || "", info.pageCount || 0];
+          })
+          .filter((m) => m[0]);
+        return matches;
+      });
+  }
+
   useEffect(() => {
     if (suppressNextSearch.current) { suppressNextSearch.current = false; return; }
     clearTimeout(debounceRef.current);
-    const q = title.trim();
+    const q = normalizeQuery(title.trim());
     if (q.length < 3) { setSuggestions([]); setShowSuggestions(false); setSearching(false); return; }
     debounceRef.current = setTimeout(() => {
       const myRequestId = ++requestIdRef.current;
       setSearching(true);
-      fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=6`)
-        .then((res) => res.json())
-        .then((data) => {
-          if (myRequestId !== requestIdRef.current) return; // stale response, ignore
-          const matches = (data.items || [])
-            .map((item) => {
-              const info = item.volumeInfo || {};
-              return [info.title || "Untitled", (info.authors && info.authors[0]) || "", info.pageCount || 0];
-            })
-            .filter((m) => m[0]);
-          setSuggestions(matches);
-          setShowSuggestions(matches.length > 0);
+      runBooksSearch(q, myRequestId)
+        .then((matches) => {
+          if (matches === null) return; // stale response, ignore
+          if (matches.length > 0) {
+            setSuggestions(matches);
+            setShowSuggestions(true);
+            setSearching(false);
+            return;
+          }
+          // No hits — retry once with punctuation stripped, since exact
+          // punctuation (curly quotes, hyphens) can trip up exact matching.
+          const stripped = q.replace(/['"’‘“”\-:,]/g, "").replace(/\s+/g, " ").trim();
+          if (stripped && stripped !== q) {
+            return runBooksSearch(stripped, myRequestId).then((retryMatches) => {
+              if (retryMatches === null) return;
+              setSuggestions(retryMatches || []);
+              setShowSuggestions((retryMatches || []).length > 0);
+              setSearching(false);
+            });
+          }
+          setSuggestions([]);
+          setShowSuggestions(false);
           setSearching(false);
         })
         .catch(() => {
