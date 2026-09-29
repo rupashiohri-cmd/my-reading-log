@@ -1022,6 +1022,20 @@
       "dateStarted": null,
       "dateFinished": null,
       "log": []
+    },
+    {
+      "id": "177f1mlrmumqmesc",
+      "title": "Man’s search for meaning",
+      "author": "Viktor Frankl",
+      "shelf": "reading",
+      "owned": true,
+      "totalPages": 154,
+      "currentPage": 0,
+      "rating": 0,
+      "dateAdded": "2026-09-29",
+      "dateStarted": "2026-09-29",
+      "dateFinished": null,
+      "log": []
     }
   ],
   "goals": {
