@@ -718,29 +718,6 @@
       "log": []
     },
     {
-      "id": "5abeemkzmrucq8c2",
-      "title": "Man's Search for Meaning",
-      "author": "Viktor E. Frankl",
-      "shelf": "read",
-      "owned": true,
-      "totalPages": 156,
-      "currentPage": 156,
-      "rating": 0,
-      "dateAdded": "2026/06/26",
-      "dateStarted": "2026-09-28",
-      "dateFinished": "2026-09-29",
-      "log": [
-        {
-          "date": "2026-09-28",
-          "page": 52
-        },
-        {
-          "date": "2026-09-29",
-          "page": 61
-        }
-      ]
-    },
-    {
       "id": "d78o9m7emrucq8c2",
       "title": "A House Without Windows",
       "author": "Nadia Hashimi",
