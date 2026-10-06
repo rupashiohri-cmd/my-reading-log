@@ -668,12 +668,17 @@
       "shelf": "reading",
       "owned": true,
       "totalPages": 427,
-      "currentPage": 0,
+      "currentPage": 9,
       "rating": 0,
       "dateAdded": "2025/09/17",
       "dateStarted": "2026-10-06",
       "dateFinished": null,
-      "log": []
+      "log": [
+        {
+          "date": "2026-10-06",
+          "page": 9
+        }
+      ]
     },
     {
       "id": "dfyvi56wmrucq8c2",
