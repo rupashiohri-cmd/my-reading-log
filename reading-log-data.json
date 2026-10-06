@@ -1039,25 +1039,6 @@
           "page": 154
         }
       ]
-    },
-    {
-      "id": "g2tf6pc4muw8gtrs",
-      "title": "Sherlock Holmes: The Complete Novels (English Edition)",
-      "author": "Arthur Conan Doyle",
-      "shelf": "read",
-      "owned": true,
-      "totalPages": 632,
-      "currentPage": 632,
-      "rating": 0,
-      "dateAdded": "2026-10-06",
-      "dateStarted": "2026-10-06",
-      "dateFinished": "2026-10-06",
-      "log": [
-        {
-          "date": "2024-06-06",
-          "page": 122
-        }
-      ]
     }
   ],
   "goals": {
