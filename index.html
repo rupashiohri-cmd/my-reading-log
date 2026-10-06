@@ -58,6 +58,11 @@ async function ghPutFile(cfg, dataObj, sha) {
   });
   if (!res.ok) {
     const errText = await res.text();
+    if (res.status === 409) {
+      const err = new Error("CONFLICT");
+      err.isConflict = true;
+      throw err;
+    }
     throw new Error(`GitHub write failed (${res.status}): ${errText}`);
   }
   const json = await res.json();
@@ -489,12 +494,30 @@ function EditLogModal({ book, onClose, onSave }) {
   );
 }
 
+function FinishBookModal({ book, onClose, onConfirm }) {
+  const [rating, setRating] = useState(book.rating || 0);
+
+  return (
+    <Modal title={`Finish — ${book.title}`} onClose={onClose}>
+      <div style={{ fontSize: "13px", color: "#5A5040", marginBottom: "12px" }}>How would you rate it? (optional — you can always change this later)</div>
+      <div style={{ marginBottom: "18px" }}>
+        <Stars rating={rating} onRate={setRating} />
+      </div>
+      <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+        <button style={btnGhost} onClick={onClose}>Cancel</button>
+        <button style={btnPrimary} onClick={() => { onConfirm(rating); onClose(); }}>Mark finished</button>
+      </div>
+    </Modal>
+  );
+}
+
 function BookCard({ book, onUpdate, onDelete, onLog, onEditLog }) {
   const [showCalendar, setShowCalendar] = useState(false);
   const [monthDate, setMonthDate] = useState(new Date());
   const [showLog, setShowLog] = useState(false);
   const [showEditBook, setShowEditBook] = useState(false);
   const [showEditLog, setShowEditLog] = useState(false);
+  const [showFinish, setShowFinish] = useState(false);
 
   return (
     <div style={{ background: "#FBF8F0", border: "1px solid #9C8563", borderRadius: "4px", padding: "14px", boxShadow: "2px 2px 0 rgba(156,133,99,0.25)", display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -520,7 +543,7 @@ function BookCard({ book, onUpdate, onDelete, onLog, onEditLog }) {
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
             <button style={btnGhost} onClick={() => setShowLog(true)}>Log today's reading</button>
             <button style={btnGhost} onClick={() => setShowCalendar((v) => !v)}>{showCalendar ? "Hide" : "Show"} calendar</button>
-            <button style={btnPrimary} onClick={() => onUpdate({ ...book, shelf: "read", dateFinished: todayStr(), currentPage: book.totalPages || book.currentPage })}>Mark finished</button>
+            <button style={btnPrimary} onClick={() => setShowFinish(true)}>Mark finished</button>
           </div>
           {showCalendar && (
             <>
@@ -549,6 +572,13 @@ function BookCard({ book, onUpdate, onDelete, onLog, onEditLog }) {
       {showLog && <LogReadingModal book={book} onClose={() => setShowLog(false)} onSave={(date, page) => onLog(book.id, date, page)} />}
       {showEditBook && <EditBookModal book={book} onClose={() => setShowEditBook(false)} onSave={onUpdate} />}
       {showEditLog && <EditLogModal book={book} onClose={() => setShowEditLog(false)} onSave={(entries) => onEditLog(book.id, entries)} />}
+      {showFinish && (
+        <FinishBookModal
+          book={book}
+          onClose={() => setShowFinish(false)}
+          onConfirm={(rating) => onUpdate({ ...book, shelf: "read", dateFinished: todayStr(), currentPage: book.totalPages || book.currentPage, rating })}
+        />
+      )}
     </div>
   );
 }
@@ -650,6 +680,7 @@ function App() {
   const currentYear = new Date().getFullYear();
   const shaRef = useRef(null);
   const pushTimerRef = useRef(null);
+  const pushRequestIdRef = useRef(0);
   const skipNextPushRef = useRef(false);
 
   // Load local cache + GitHub config on first mount
@@ -719,10 +750,41 @@ function App() {
     if (skipNextPushRef.current) { skipNextPushRef.current = false; return; }
     clearTimeout(pushTimerRef.current);
     pushTimerRef.current = setTimeout(() => {
+      const myPushId = ++pushRequestIdRef.current;
       setSyncStatus("syncing");
       ghPutFile(ghConfig, { books, goals }, shaRef.current)
-        .then((newSha) => { shaRef.current = newSha; setSyncStatus("synced"); setSyncError(""); })
-        .catch((e) => { setSyncStatus("error"); setSyncError(e.message); });
+        .then((newSha) => {
+          if (myPushId !== pushRequestIdRef.current) return; // a newer push superseded this one
+          shaRef.current = newSha;
+          setSyncStatus("synced");
+          setSyncError("");
+        })
+        .catch((e) => {
+          if (myPushId !== pushRequestIdRef.current) return;
+          if (e.isConflict) {
+            // Someone else (another device) wrote first — pull their latest sha and retry once with our current data.
+            ghGetFile(ghConfig)
+              .then(({ sha }) => {
+                if (myPushId !== pushRequestIdRef.current) return;
+                shaRef.current = sha;
+                return ghPutFile(ghConfig, { books, goals }, sha);
+              })
+              .then((newSha) => {
+                if (!newSha || myPushId !== pushRequestIdRef.current) return;
+                shaRef.current = newSha;
+                setSyncStatus("synced");
+                setSyncError("");
+              })
+              .catch((e2) => {
+                if (myPushId !== pushRequestIdRef.current) return;
+                setSyncStatus("error");
+                setSyncError("Sync conflict — tap 'Refresh from cloud' to resolve.");
+              });
+          } else {
+            setSyncStatus("error");
+            setSyncError(e.message);
+          }
+        });
     }, 1200);
     return () => clearTimeout(pushTimerRef.current);
     // eslint-disable-next-line
