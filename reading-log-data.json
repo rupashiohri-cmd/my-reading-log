@@ -132,25 +132,6 @@
       "log": []
     },
     {
-      "id": "rj77fmgjmrucq8c2",
-      "title": "Complete Novels of Sherlock Holmes (Deluxe Hardbound Edition), The",
-      "author": "Arthur Conan Doyle",
-      "shelf": "read",
-      "owned": true,
-      "totalPages": 632,
-      "currentPage": 632,
-      "rating": 0,
-      "dateAdded": "2024/06/05",
-      "dateStarted": "2024/06/05",
-      "dateFinished": "2026-10-06",
-      "log": [
-        {
-          "date": "2026-07-21",
-          "page": 122
-        }
-      ]
-    },
-    {
       "id": "mebr9ojnmrucq8c2",
       "title": "What She Found in the Woods",
       "author": "Josephine Angelini",
