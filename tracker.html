@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brewing Chapters · Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+body{background:#f5f5f3;color:#1a1a1a;font-family:'Inter',sans-serif;min-height:100vh;padding-bottom:60px}
+.header{padding:1.25rem 1rem 1rem;background:#fff;border-bottom:1px solid #e8e8e8;display:flex;justify-content:space-between;align-items:flex-start}
+.page-name{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#1a1a1a;line-height:1.1;margin-bottom:2px}
+.sub-line{font-size:11px;color:#999;margin-top:6px}
+.live-badge{display:inline-flex;align-items:center;gap:5px;background:#edf7f2;color:#0d7a4a;font-size:10px;font-weight:600;padding:4px 10px;border-radius:20px;margin-top:6px}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#0d7a4a;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.header-right{text-align:right}
+.date-label{font-size:10px;color:#999;margin-bottom:4px}
+
+.section{padding:1rem;border-bottom:1px solid #e8e8e8}
+.section:last-child{border-bottom:none}
+.section-title{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px}
+
+.s-blue{background:#eef4fd}.s-blue .section-title{color:#1a5fad}
+.s-green{background:#edf7f2}.s-green .section-title{color:#0d7a4a}
+.s-purple{background:#f0eefb}.s-purple .section-title{color:#4535b0}
+.s-amber{background:#fdf6e8}.s-amber .section-title{color:#a07000}
+.s-pink{background:#fceef4}.s-pink .section-title{color:#b5366a}
+
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat-box{background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:12px}
+.stat-val{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:#1a1a1a;line-height:1}
+.stat-label{font-size:11px;color:#999;margin-top:4px}
+.stat-sub{font-size:10px;color:#0d7a4a;margin-top:3px}
+
+.pod{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #e8e8e8}
+.pod:last-child{border-bottom:none;padding-bottom:0}
+.pod-rank{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:#999;width:16px;flex-shrink:0}
+.pod-title{font-size:12px;font-weight:600;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pod-stats{font-size:10px;color:#999;margin-top:2px}
+.pod-views{font-size:15px;font-weight:600;color:#0d7a4a;flex-shrink:0}
+
+.chart-wrap{position:relative;height:160px}
+.chart-wrap.sm{height:140px}
+
+.post{padding:12px 0;border-bottom:1px solid #e8e8e8}
+.post:last-child{border-bottom:none;padding-bottom:0}
+.post-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.post-title{font-size:12px;font-weight:600;color:#1a1a1a;flex:1;margin-right:8px;line-height:1.4}
+.post-date{font-size:10px;color:#999;flex-shrink:0}
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;text-align:center}
+.m-val{font-size:13px;font-weight:600;color:#1a1a1a;display:block}
+.m-val.g{color:#0d7a4a}
+.m-val.r{color:#c0392b}
+.m-label{font-size:9px;color:#999;margin-top:1px}
+
+.loading{text-align:center;padding:48px 20px;color:#999;font-size:14px}
+.error-box{background:#fff5f5;border:1px solid #ffd0d0;border-radius:12px;padding:16px;margin:16px;font-size:13px;color:#c0392b;line-height:1.6}
+
+.refresh-btn{position:fixed;bottom:20px;right:16px;background:#1a1a1a;color:#fff;border:none;border-radius:50px;padding:12px 20px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 4px 12px rgba(0,0,0,0.2)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="page-name">Brewing Chapters</div>
+    <div style="font-size:13px;color:#555;margin-top:2px;">Analytics Dashboard</div>
+    <div class="sub-line">brewing__chapters · Bengaluru</div>
+  </div>
+  <div class="header-right">
+    <div class="date-label" id="dateLabel">Loading...</div>
+    <div class="live-badge"><span class="live-dot"></span> Live</div>
+  </div>
+</div>
+
+<div id="mainContent">
+  <div class="loading">Loading your analytics...</div>
+</div>
+
+<button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+
+<script>
+const WORKER = "https://blue-flower-2ef4.rupashiohri.workers.dev";
+let charts = [];
+
+async function loadData() {
+  document.getElementById('mainContent').innerHTML = '<div class="loading">Fetching live data from Instagram...</div>';
+  charts.forEach(c => c.destroy());
+  charts = [];
+
+  try {
+    const res = await fetch(WORKER);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    render(data);
+  } catch(e) {
+    document.getElementById('mainContent').innerHTML = `<div class="error-box">Could not load data: ${e.message}<br><br>The Worker may need updating with the latest token. Share the error with Claude.</div>`;
+  }
+}
+
+function fmt(n) { return n >= 1000 ? (n/1000).toFixed(1)+'K' : n; }
+function fmtDate(d) { if(!d) return ''; return new Date(d).toLocaleDateString('en-IN',{day:'numeric',month:'short'}); }
+
+function getThresholds(posts) {
+  const saves = posts.map(p => p.saves);
+  const sends = posts.map(p => p.shares);
+  const saveMed = saves.sort((a,b)=>a-b)[Math.floor(saves.length/2)] || 5;
+  const sendMed = sends.sort((a,b)=>a-b)[Math.floor(sends.length/2)] || 5;
+  return { saveMed, sendMed };
+}
+
+function render(data) {
+  const posts = (data.posts || []).sort((a,b) => b.views - a.views);
+  const chronoPosts = (data.posts || []).sort((a,b) => new Date(a.date) - new Date(b.date));
+  const totalViews = posts.reduce((s,p) => s+p.views, 0);
+  const totalSaves = posts.reduce((s,p) => s+p.saves, 0);
+  const totalSends = posts.reduce((s,p) => s+p.shares, 0);
+  const { saveMed, sendMed } = getThresholds(posts);
+  const best = posts[0] || {};
+
+  document.getElementById('dateLabel').textContent = data.updated || new Date().toISOString().substring(0,10);
+
+  let html = '';
+
+  // Page overview
+  html += `<div class="section s-blue">
+    <div class="section-title">Page overview</div>
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-val">${fmt(totalViews)}</div><div class="stat-label">Total views</div><div class="stat-sub">${data.media_count || posts.length} posts</div></div>
+      <div class="stat-box"><div class="stat-val">${fmt(data.followers || 0)}</div><div class="stat-label">Followers</div></div>
+      <div class="stat-box"><div class="stat-val">${totalSaves}</div><div class="stat-label">Total saves</div></div>
+      <div class="stat-box"><div class="stat-val">${totalSends}</div><div class="stat-label">Total sends</div></div>
+    </div>
+  </div>`;
+
+  // Top performers
+  html += `<div class="section s-green"><div class="section-title">Top performers</div>`;
+  posts.slice(0,3).forEach((p,i) => {
+    html += `<div class="pod">
+      <div class="pod-rank">${i+1}</div>
+      <div style="flex:1;min-width:0">
+        <div class="pod-title">${p.caption || p.id}</div>
+        <div class="pod-stats">${p.saves} saves · ${p.shares} sends · ${fmtDate(p.date)}</div>
+      </div>
+      <div class="pod-views">${fmt(p.views)}</div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  // Views chart
+  html += `<div class="section s-purple"><div class="section-title">Views over time</div><div class="chart-wrap"><canvas id="vc"></canvas></div></div>`;
+
+  // Watch time — placeholder since watch_time not in basic API
+  html += `<div class="section s-amber"><div class="section-title">Engagement over time</div><div class="chart-wrap sm"><canvas id="ec"></canvas></div></div>`;
+
+  // All posts
+  html += `<div class="section s-pink"><div class="section-title">All posts</div>`;
+  [...posts].forEach(p => {
+    html += `<div class="post">
+      <div class="post-top">
+        <div class="post-title">${p.caption || p.id}</div>
+        <div class="post-date">${fmtDate(p.date)}</div>
+      </div>
+      <div class="metrics">
+        <div><span class="m-val">${fmt(p.views)}</span><div class="m-label">Views</div></div>
+        <div><span class="m-val ${p.saves >= saveMed ? 'g' : p.saves === 0 ? 'r' : ''}">${p.saves}</span><div class="m-label">Saves</div></div>
+        <div><span class="m-val ${p.shares >= sendMed ? 'g' : p.shares === 0 ? 'r' : ''}">${p.shares}</span><div class="m-label">Sends</div></div>
+        <div><span class="m-val">${p.likes}</span><div class="m-label">Likes</div></div>
+        <div><span class="m-val">${p.comments}</span><div class="m-label">Comments</div></div>
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  document.getElementById('mainContent').innerHTML = html;
+
+  // Charts
+  const muted = '#aaa';
+  const grid = '#e8e8e8';
+  const labels = chronoPosts.map(p => fmtDate(p.date));
+
+  const vc = document.getElementById('vc');
+  if(vc) {
+    charts.push(new Chart(vc, {
+      type: 'bar',
+      data: { labels, datasets: [{ data: chronoPosts.map(p=>p.views), backgroundColor: '#6250d6', borderRadius: 4, borderSkipped: false }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+        scales:{ x:{ticks:{color:muted,font:{size:8},maxRotation:45,autoSkip:false},grid:{display:false},border:{display:false}},
+          y:{ticks:{color:muted,font:{size:9},callback:v=>v>=1000?(v/1000).toFixed(1)+'K':v},grid:{color:grid},border:{display:false}} } }
+    }));
+  }
+
+  const ec = document.getElementById('ec');
+  if(ec) {
+    charts.push(new Chart(ec, {
+      type: 'line',
+      data: { labels, datasets: [{ data: chronoPosts.map(p=>p.saves+p.shares), borderColor:'#eda100', backgroundColor:'rgba(237,161,0,0.08)', tension:0.4, pointBackgroundColor:'#eda100', pointRadius:4, fill:true }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+        scales:{ x:{ticks:{color:muted,font:{size:8},maxRotation:45,autoSkip:false},grid:{display:false},border:{display:false}},
+          y:{ticks:{color:muted,font:{size:9}},grid:{color:grid},border:{display:false}} } }
+    }));
+  }
+}
+
+loadData();
+</script>
+</body>
+</html>
