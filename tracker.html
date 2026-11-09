@@ -43,6 +43,10 @@ body{background:#f5f5f3;color:#1a1a1a;font-family:'Inter',sans-serif;min-height:
 .m-val{font-size:13px;font-weight:600;display:block}
 .m-val.g{color:#0d7a4a}.m-val.r{color:#c0392b}
 .m-label{font-size:9px;color:#999;margin-top:1px}
+.search{width:100%;border:1px solid #e3bfd0;border-radius:10px;padding:10px 12px;font-size:16px;font-family:'Inter',sans-serif;background:#fff;color:#1a1a1a;margin-bottom:6px}
+.search:focus{outline:none;border-color:#b5366a}
+.count{font-size:10px;color:#999;margin-bottom:6px}
+.empty{font-size:12px;color:#999;padding:12px 0}
 .note{background:#fff8e8;border:1px solid #f0dca8;border-radius:10px;padding:12px;margin:12px 1rem;font-size:12px;color:#7a5a00;line-height:1.5}
 .error-box{background:#fff5f5;border:1px solid #ffd0d0;border-radius:12px;padding:16px;margin:16px;font-size:13px;color:#c0392b;line-height:1.6}
 .loading{text-align:center;padding:48px 20px;color:#999;font-size:14px}
@@ -81,6 +85,30 @@ function flag(kind, p) {
   if (kind === "watch") return p.watch >= T.watch ? "g" : (p.watch > 0 && p.watch < T.lowWatch ? "r" : "");
   if (kind === "views") return p.views < T.lowViews ? "r" : "";
   return "";
+}
+
+var allPosts = [];
+
+function postHtml(p) {
+  return '<div class="post"><div class="post-top"><div class="post-title">' + esc(title(p.caption)) + '</div><div class="post-date">' + fmtDate(p.date) + '</div></div>' +
+    '<div class="metrics">' +
+    '<div><span class="m-val ' + flag("views", p) + '">' + fmt(p.views) + '</span><div class="m-label">Views</div></div>' +
+    '<div><span class="m-val ' + flag("saves", p) + '">' + p.saves + '</span><div class="m-label">Saves</div></div>' +
+    '<div><span class="m-val ' + flag("sends", p) + '">' + p.sends + '</span><div class="m-label">Sends</div></div>' +
+    '<div><span class="m-val">' + p.likes + '</span><div class="m-label">Likes</div></div>' +
+    '<div><span class="m-val ' + flag("watch", p) + '">' + p.watch + 's</span><div class="m-label">Watch</div></div>' +
+    '</div></div>';
+}
+
+function drawPosts() {
+  var q = document.getElementById("q").value.toLowerCase().trim();
+  var words = q ? q.split(/\s+/) : [];
+  var list = allPosts.filter(function (p) {
+    var hay = (p.caption + " " + fmtDate(p.date)).toLowerCase();
+    return words.every(function (w) { return hay.indexOf(w) !== -1; });
+  });
+  document.getElementById("count").textContent = list.length + " of " + allPosts.length + " posts";
+  document.getElementById("plist").innerHTML = list.length ? list.map(postHtml).join("") : '<div class="empty">No posts match that search.</div>';
 }
 
 function load() {
@@ -131,20 +159,13 @@ function render(d) {
   html += '<div class="section s-purple"><div class="section-title">Views over time</div><div class="chart-wrap"><canvas id="vc"></canvas></div></div>';
   html += '<div class="section s-amber"><div class="section-title">Watch time trend</div><div class="chart-wrap"><canvas id="wc"></canvas></div></div>';
 
-  html += '<div class="section s-pink"><div class="section-title">All posts</div>';
-  recent.forEach(function (p) {
-    html += '<div class="post"><div class="post-top"><div class="post-title">' + esc(title(p.caption)) + '</div><div class="post-date">' + fmtDate(p.date) + '</div></div>' +
-      '<div class="metrics">' +
-      '<div><span class="m-val ' + flag("views", p) + '">' + fmt(p.views) + '</span><div class="m-label">Views</div></div>' +
-      '<div><span class="m-val ' + flag("saves", p) + '">' + p.saves + '</span><div class="m-label">Saves</div></div>' +
-      '<div><span class="m-val ' + flag("sends", p) + '">' + p.sends + '</span><div class="m-label">Sends</div></div>' +
-      '<div><span class="m-val">' + p.likes + '</span><div class="m-label">Likes</div></div>' +
-      '<div><span class="m-val ' + flag("watch", p) + '">' + p.watch + 's</span><div class="m-label">Watch</div></div>' +
-      '</div></div>';
-  });
-  html += '</div>';
+  allPosts = recent;
+  html += '<div class="section s-pink"><div class="section-title">All posts</div>' +
+    '<input id="q" class="search" type="search" placeholder="Search posts, e.g. Snape or Oct" oninput="drawPosts()">' +
+    '<div class="count" id="count"></div><div id="plist"></div></div>';
 
   document.getElementById("main").innerHTML = html;
+  drawPosts();
 
   var muted = "#aaa", grid = "#e0dede", labels = chrono.map(function (p) { return fmtDate(p.date); });
   var scales = function (cb) {
