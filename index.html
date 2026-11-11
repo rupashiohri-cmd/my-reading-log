@@ -588,6 +588,8 @@ function SettingsModal({ ghConfig, syncStatus, syncError, onClose, onSave, onDis
   const [repo, setRepo] = useState(ghConfig?.repo || "");
   const [token, setToken] = useState(ghConfig?.token || "");
   const [booksKeyInput, setBooksKeyInput] = useState(booksApiKey || "");
+  const [showToken, setShowToken] = useState(false);
+  const [showBooksKey, setShowBooksKey] = useState(false);
 
   return (
     <Modal title="Settings" onClose={onClose}>
@@ -600,10 +602,17 @@ function SettingsModal({ ghConfig, syncStatus, syncError, onClose, onSave, onDis
           <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "11px", color: syncStatus === "error" ? "#A63A2C" : "#5A5040", marginBottom: "14px" }}>
             Status: {syncStatus}{syncError ? ` — ${syncError}` : ""}
           </div>
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
             <button style={btnGhost} onClick={onRefresh}>Refresh from cloud</button>
             <button style={{ ...btnGhost, borderColor: "#A63A2C", color: "#A63A2C" }} onClick={onDisconnect}>Disconnect</button>
           </div>
+          <button style={{ ...btnGhost, marginBottom: "8px" }} onClick={() => setShowToken((v) => !v)}>{showToken ? "Hide saved token" : "Show saved token"}</button>
+          {showToken && (
+            <>
+              <input style={inputStyle} type="text" readOnly value={ghConfig.token} onFocus={(e) => e.target.select()} />
+              <div style={{ fontSize: "11px", color: "#8C7A5C", lineHeight: 1.5 }}>Tap the box, then Select All, then Copy. Paste it into the same field on your other device. Keep it private.</div>
+            </>
+          )}
         </>
       ) : (
         <>
@@ -640,7 +649,8 @@ function SettingsModal({ ghConfig, syncStatus, syncError, onClose, onSave, onDis
         Book title search uses Google Books. Without a personal key it shares a global limit and can fail with "too many requests." Add your own free key for reliable search.
       </div>
       <label style={labelStyle}>Google Books API key (optional)</label>
-      <input style={inputStyle} type="password" value={booksKeyInput} onChange={(e) => setBooksKeyInput(e.target.value)} placeholder="AIzaSy..." autoComplete="off" />
+      <input style={{ ...inputStyle, marginBottom: "6px" }} type={showBooksKey ? "text" : "password"} value={booksKeyInput} onChange={(e) => setBooksKeyInput(e.target.value)} placeholder="AIzaSy..." autoComplete="off" />
+      <button style={{ background: "none", border: "none", cursor: "pointer", color: "#1F3B57", fontFamily: "'IBM Plex Mono', monospace", fontSize: "11px", textDecoration: "underline", padding: 0, marginBottom: "12px" }} onClick={() => setShowBooksKey((v) => !v)}>{showBooksKey ? "Hide key" : "Show key"}</button>
       <div style={{ fontSize: "11px", color: "#8C7A5C", marginBottom: "14px", lineHeight: 1.5 }}>
         Free at console.cloud.google.com → create a project → enable "Books API" → Credentials → Create Credentials → API key.
       </div>
