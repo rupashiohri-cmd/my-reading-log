@@ -1106,12 +1106,17 @@
       "shelf": "reading",
       "owned": true,
       "totalPages": 7,
-      "currentPage": 0,
+      "currentPage": 33,
       "rating": 0,
       "dateAdded": "2026-11-25",
       "dateStarted": "2026-11-25",
       "dateFinished": null,
-      "log": []
+      "log": [
+        {
+          "date": "2026-11-25",
+          "page": 33
+        }
+      ]
     }
   ],
   "goals": {
