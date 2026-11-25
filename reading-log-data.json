@@ -1098,6 +1098,20 @@
           "page": 122
         }
       ]
+    },
+    {
+      "id": "osv3rfgtmwvnvhok",
+      "title": "Reread-Harry Potter and the Philosopher's Stone",
+      "author": "J. K. Rowling",
+      "shelf": "reading",
+      "owned": true,
+      "totalPages": 7,
+      "currentPage": 0,
+      "rating": 0,
+      "dateAdded": "2026-11-25",
+      "dateStarted": "2026-11-25",
+      "dateFinished": null,
+      "log": []
     }
   ],
   "goals": {
